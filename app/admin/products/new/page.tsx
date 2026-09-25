@@ -1,0 +1,495 @@
+"use client";
+
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Plus, X } from "lucide-react";
+import { useAuthStore } from "@/lib/store/authStore";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+interface FlatCategory {
+  id: string;
+  name: string;
+  slug: string;
+  level: number;
+  parentName?: string;
+  fullPath: string;
+}
+
+export default function NewProductPage() {
+  const router = useRouter();
+  const { loadFromStorage } = useAuthStore();
+
+  const [categories, setCategories] = useState<FlatCategory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    price: "",
+    comparePrice: "",
+    categoryId: "",
+    images: [""],
+    sizes: [] as string[],
+    colors: [] as string[],
+    stock: "",
+    sku: "",
+    isFeatured: false,
+  });
+
+  const [sizeInput, setSizeInput] = useState("");
+  const [colorInput, setColorInput] = useState("");
+
+  // Load auth + categories (flattened with 3-level depth)
+  useEffect(() => {
+    loadFromStorage();
+
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/categories`);
+        const data = await res.json();
+        if (data.success) {
+          const flat: FlatCategory[] = [];
+
+          data.data.categories.forEach((parent: any) => {
+            // Level 1: Parent
+            flat.push({
+              id: parent.id,
+              name: parent.name,
+              slug: parent.slug,
+              level: 0,
+              fullPath: parent.name,
+            });
+
+            // Level 2: Children
+            if (parent.children) {
+              parent.children.forEach((child: any) => {
+                flat.push({
+                  id: child.id,
+                  name: child.name,
+                  slug: child.slug,
+                  level: 1,
+                  parentName: parent.name,
+                  fullPath: `${parent.name} → ${child.name}`,
+                });
+
+                // Level 3: Grandchildren
+                if (child.children) {
+                  child.children.forEach((grandchild: any) => {
+                    flat.push({
+                      id: grandchild.id,
+                      name: grandchild.name,
+                      slug: grandchild.slug,
+                      level: 2,
+                      parentName: child.name,
+                      fullPath: `${parent.name} → ${child.name} → ${grandchild.name}`,
+                    });
+                  });
+                }
+              });
+            }
+          });
+
+          setCategories(flat);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchCategories();
+  }, [loadFromStorage]);
+
+  const update = (key: string, value: any) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const addImage = () => update("images", [...form.images, ""]);
+  const updateImage = (index: number, value: string) => {
+    const newImages = [...form.images];
+    newImages[index] = value;
+    update("images", newImages);
+  };
+  const removeImage = (index: number) => {
+    update("images", form.images.filter((_, i) => i !== index));
+  };
+
+  const addSize = () => {
+    if (sizeInput.trim() && !form.sizes.includes(sizeInput.trim())) {
+      update("sizes", [...form.sizes, sizeInput.trim()]);
+      setSizeInput("");
+    }
+  };
+  const removeSize = (size: string) => {
+    update("sizes", form.sizes.filter((s) => s !== size));
+  };
+
+  const addColor = () => {
+    if (colorInput.trim() && !form.colors.includes(colorInput.trim())) {
+      update("colors", [...form.colors, colorInput.trim()]);
+      setColorInput("");
+    }
+  };
+  const removeColor = (color: string) => {
+    update("colors", form.colors.filter((c) => c !== color));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const token = localStorage.getItem("zaem_token");
+    if (!token) return;
+
+    if (!form.name || !form.description || !form.price || !form.categoryId) {
+      setError("Name, description, price, and category are required");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API_URL}/api/products`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...form,
+          price: parseFloat(form.price),
+          comparePrice: form.comparePrice
+            ? parseFloat(form.comparePrice)
+            : null,
+          stock: parseInt(form.stock) || 0,
+          images: form.images.filter((img) => img.trim() !== ""),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        router.push("/admin/products");
+      } else {
+        setError(data.message || "Failed to create product");
+      }
+    } catch (error) {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+
+      {/* Header */}
+      <div className="mb-10">
+        <Link
+          href="/admin/products"
+          className="inline-flex items-center gap-2 text-label text-muted hover:text-gold transition-colors mb-6"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.5} />
+          Back to Products
+        </Link>
+        <h1 className="display-lg">Add Product</h1>
+      </div>
+
+      {error && (
+        <div className="mb-8 p-4 bg-red-50 border-l-2 border-red-500 text-sm font-body text-red-700">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl">
+
+        {/* Basic Info */}
+        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
+          <h2 className="font-display text-xl mb-6">Basic Information</h2>
+
+          <div className="space-y-6">
+            <div>
+              <label className="text-label text-muted block mb-3">
+                Product Name *
+              </label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => update("name", e.target.value)}
+                required
+                placeholder="e.g., Ivory Linen Shirt"
+                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="text-label text-muted block mb-3">
+                Description *
+              </label>
+              <textarea
+                value={form.description}
+                onChange={(e) => update("description", e.target.value)}
+                required
+                rows={4}
+                placeholder="Detailed product description..."
+                className="w-full bg-transparent border border-ink/20 focus:border-gold outline-none p-4 text-sm font-body transition-colors resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-label text-muted block mb-3">
+                Category *
+              </label>
+              <select
+                value={form.categoryId}
+                onChange={(e) => update("categoryId", e.target.value)}
+                required
+                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
+              >
+                <option value="">Select a category</option>
+
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.level === 0 && cat.name}
+                    {cat.level === 1 && `  ↳ ${cat.name}`}
+                    {cat.level === 2 && `      ↳ ${cat.name}`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted font-body mt-2">
+                💡 3 levels: Parent → Child → Sub-Child (e.g., Woman → Unstitched → Platinum)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Pricing */}
+        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
+          <h2 className="font-display text-xl mb-6">Pricing</h2>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-label text-muted block mb-3">
+                Price (PKR) *
+              </label>
+              <input
+                type="number"
+                value={form.price}
+                onChange={(e) => update("price", e.target.value)}
+                required
+                placeholder="4500"
+                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
+              />
+            </div>
+            <div>
+              <label className="text-label text-muted block mb-3">
+                Compare Price (PKR)
+              </label>
+              <input
+                type="number"
+                value={form.comparePrice}
+                onChange={(e) => update("comparePrice", e.target.value)}
+                placeholder="6500 (optional)"
+                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Images */}
+        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display text-xl">Images</h2>
+            <button
+              type="button"
+              onClick={addImage}
+              className="text-label text-gold hover:text-ink transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
+              Add Image
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {form.images.map((img, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="text-label text-muted w-6">{i + 1}.</span>
+                <input
+                  type="url"
+                  value={img}
+                  onChange={(e) => updateImage(i, e.target.value)}
+                  placeholder="https://images.unsplash.com/..."
+                  className="flex-1 bg-transparent border-b border-ink/20 focus:border-gold outline-none py-2 text-sm font-body transition-colors"
+                />
+                {form.images.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeImage(i)}
+                    className="p-2 text-muted hover:text-red-500 transition-colors"
+                  >
+                    <X className="w-4 h-4" strokeWidth={1.5} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {form.images[0] && (
+            <div className="mt-6">
+              <p className="text-label text-muted mb-3">Preview</p>
+              <div className="w-32 h-40 bg-bone overflow-hidden">
+                <img
+                  src={form.images[0]}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sizes */}
+        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
+          <h2 className="font-display text-xl mb-6">Sizes (Optional)</h2>
+
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={sizeInput}
+              onChange={(e) => setSizeInput(e.target.value)}
+              onKeyDown={(e) =>
+                e.key === "Enter" && (e.preventDefault(), addSize())
+              }
+              placeholder="e.g., S, M, L, XL"
+              className="flex-1 bg-transparent border-b border-ink/20 focus:border-gold outline-none py-2 text-sm font-body transition-colors"
+            />
+            <button
+              type="button"
+              onClick={addSize}
+              className="px-4 text-label text-gold hover:text-ink transition-colors"
+            >
+              Add
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {form.sizes.map((size) => (
+              <span
+                key={size}
+                className="flex items-center gap-2 px-4 py-2 bg-bone text-label"
+              >
+                {size}
+                <button
+                  type="button"
+                  onClick={() => removeSize(size)}
+                  className="hover:text-red-500"
+                >
+                  <X className="w-3 h-3" strokeWidth={2} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Colors */}
+        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
+          <h2 className="font-display text-xl mb-6">Colors (Optional)</h2>
+
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={colorInput}
+              onChange={(e) => setColorInput(e.target.value)}
+              onKeyDown={(e) =>
+                e.key === "Enter" && (e.preventDefault(), addColor())
+              }
+              placeholder="e.g., Ivory, Charcoal"
+              className="flex-1 bg-transparent border-b border-ink/20 focus:border-gold outline-none py-2 text-sm font-body transition-colors"
+            />
+            <button
+              type="button"
+              onClick={addColor}
+              className="px-4 text-label text-gold hover:text-ink transition-colors"
+            >
+              Add
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {form.colors.map((color) => (
+              <span
+                key={color}
+                className="flex items-center gap-2 px-4 py-2 bg-bone text-label"
+              >
+                {color}
+                <button
+                  type="button"
+                  onClick={() => removeColor(color)}
+                  className="hover:text-red-500"
+                >
+                  <X className="w-3 h-3" strokeWidth={2} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Inventory */}
+        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
+          <h2 className="font-display text-xl mb-6">Inventory</h2>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-label text-muted block mb-3">
+                Stock Quantity
+              </label>
+              <input
+                type="number"
+                value={form.stock}
+                onChange={(e) => update("stock", e.target.value)}
+                placeholder="25"
+                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
+              />
+            </div>
+            <div>
+              <label className="text-label text-muted block mb-3">SKU</label>
+              <input
+                type="text"
+                value={form.sku}
+                onChange={(e) => update("sku", e.target.value)}
+                placeholder="ZAEM-SHIRT-001"
+                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
+              />
+            </div>
+          </div>
+
+          <label className="flex items-center gap-3 mt-6 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.isFeatured}
+              onChange={(e) => update("isFeatured", e.target.checked)}
+              className="w-4 h-4 accent-gold"
+            />
+            <span className="text-sm font-body">Featured on homepage</span>
+          </label>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row gap-4 pt-4">
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary disabled:opacity-50"
+          >
+            {loading ? "Creating..." : "Create Product"}
+          </button>
+          <Link href="/admin/products" className="btn-outline text-center">
+            Cancel
+          </Link>
+        </div>
+
+      </form>
+
+    </div>
+  );
+}

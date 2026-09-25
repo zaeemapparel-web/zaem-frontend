@@ -1,26 +1,895 @@
 @import "tailwindcss";
 
+/* ============================================================
+   ZAEM — DESIGN TOKENS
+   ============================================================ */
+
+@theme {
+  /* Colors — Quiet Luxury Palette */
+  --color-ivory: #FAF8F4;
+  --color-bone: #F5F0E8;
+  --color-ink: #0A0A0A;
+  --color-gold: #C9A961;
+  --color-muted: #75705F;
+  --color-charcoal: #1A1A1A;
+  --color-cream: #EDE8DD;
+
+  /* Fonts */
+  --font-display: 'Playfair Display', serif;
+  --font-body: 'Inter', sans-serif;
+
+  /* Easings */
+  --ease-luxury: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Animations */
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-marquee-slow: marquee 60s linear infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-fade-in: fadeIn 1.2s var(--ease-luxury) both;
+  --animate-reveal-up: revealUp 1.2s var(--ease-luxury) both;
+  --animate-clip-reveal: clipReveal 1.4s var(--ease-luxury) both;
+  --animate-pulse-gold: pulseGold 3s ease-in-out infinite;
+}
+
+/* ============================================================
+   TYPOGRAPHY SCALE
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --display-hero: clamp(3.5rem, 12vw, 11rem);
+  --display-xl: clamp(2.5rem, 6vw, 5.5rem);
+  --display-lg: clamp(2rem, 4vw, 3.5rem);
+  --display-md: clamp(1.5rem, 2.5vw, 2.25rem);
+  --label: 10px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-ivory);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-x: hidden;
+  transition: background-color 0.5s var(--ease-luxury),
+    color 0.5s var(--ease-luxury);
+}
+
+/* ============================================================
+   DARK MODE
+   ============================================================ */
+
+.dark {
+  --color-ivory: #0A0A0A;
+  --color-bone: #1A1A1A;
+  --color-ink: #FAF8F4;
+  --color-muted: #A8A296;
+  --color-cream: #2A2A2A;
+  --color-charcoal: #EDE8DD;
+}
+
+.dark body {
+  background-color: #0A0A0A;
+  color: #FAF8F4;
+}
+
+.dark body,
+.dark header,
+.dark main,
+.dark footer,
+.dark section,
+.dark a,
+.dark button,
+.dark input,
+.dark textarea,
+.dark select {
+  transition: background-color 0.5s var(--ease-luxury),
+    color 0.5s var(--ease-luxury),
+    border-color 0.5s var(--ease-luxury);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1A1A1A;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #75705F;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #C9A961;
+}
+
+.dark ::selection {
+  background: var(--color-gold);
+  color: #0A0A0A;
+}
+
+/* ============================================================
+   CUSTOM SCROLLBAR
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bone);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-muted);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold);
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ============================================================
+   TEXT SELECTION
+   ============================================================ */
+
+::selection {
+  background: var(--color-gold);
+  color: var(--color-ivory);
+}
+
+/* ============================================================
+   TYPOGRAPHY UTILITIES
+   ============================================================ */
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+.text-label {
+  font-family: var(--font-body);
+  font-size: var(--label);
+  font-weight: 500;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+}
+
+.text-label-sm {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+}
+
+.display-hero {
+  font-family: var(--font-display);
+  font-size: var(--display-hero);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  font-weight: 400;
+}
+
+.display-xl {
+  font-family: var(--font-display);
+  font-size: var(--display-xl);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-weight: 400;
+}
+
+.display-lg {
+  font-family: var(--font-display);
+  font-size: var(--display-lg);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 400;
+}
+
+.display-md {
+  font-family: var(--font-display);
+  font-size: var(--display-md);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-weight: 400;
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes clipReveal {
+  from { clip-path: inset(100% 0 0 0); opacity: 0; }
+  to { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 97, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(201, 169, 97, 0); }
+}
+
+@keyframes glow {
+  0%, 100% { opacity: 0.4; filter: blur(40px); }
+  50% { opacity: 0.8; filter: blur(60px); }
+}
+
+@keyframes loading {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* NEW — Next Level Animations */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes rotateIn {
+  from { opacity: 0; transform: rotate(-10deg) scale(0.9); }
+  to { opacity: 1; transform: rotate(0) scale(1); }
+}
+
+@keyframes goldShimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes bounceSubtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(201, 169, 97, 0.3),
+                0 0 40px rgba(201, 169, 97, 0.1);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(201, 169, 97, 0.5),
+                0 0 60px rgba(201, 169, 97, 0.2);
+  }
+}
+
+/* ============================================================
+   LINK UNDERLINE
+   ============================================================ */
+
+.link-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.link-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.6s var(--ease-luxury);
+}
+
+.link-underline:hover::after {
+  transform: scaleX(1);
+}
+
+/* ============================================================
+   IMAGE HOVER ZOOM
+   ============================================================ */
+
+.img-zoom {
+  overflow: hidden;
+  display: block;
+  will-change: transform;
+}
+
+.img-zoom img {
+  transition: transform 2s var(--ease-luxury);
+  will-change: transform;
+}
+
+.img-zoom:hover img {
+  transform: scale(1.06);
+}
+
+/* ============================================================
+   BUTTON STYLES
+   ============================================================ */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2.5rem;
+  background: var(--color-ink);
+  color: var(--color-ivory);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  border: 1px solid var(--color-ink);
+  cursor: pointer;
+  transition: all 0.5s var(--ease-luxury);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  background: transparent;
+  color: var(--color-ink);
+}
+
+.dark .btn-primary {
+  background: var(--color-gold);
+  color: #0A0A0A;
+  border-color: var(--color-gold);
+}
+
+.dark .btn-primary:hover {
+  background: transparent;
+  color: var(--color-gold);
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2.5rem;
+  background: transparent;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  border: 1px solid var(--color-ink);
+  cursor: pointer;
+  transition: all 0.5s var(--ease-luxury);
+}
+
+.btn-outline:hover {
+  background: var(--color-ink);
+  color: var(--color-ivory);
+}
+
+.dark .btn-outline {
+  color: var(--color-gold);
+  border-color: var(--color-gold);
+}
+
+.dark .btn-outline:hover {
+  background: var(--color-gold);
+  color: #0A0A0A;
+}
+
+/* ============================================================
+   GLASS EFFECTS
+   ============================================================ */
+
+.glass {
+  background: rgba(250, 248, 244, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(10, 10, 10, 0.05);
+}
+
+.dark .glass {
+  background: rgba(10, 10, 10, 0.75);
+  border-bottom: 1px solid rgba(250, 248, 244, 0.05);
+}
+
+.glass-dark {
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ============================================================
+   HOVER EFFECTS
+   ============================================================ */
+
+.hover-lift {
+  transition: transform 0.5s var(--ease-luxury),
+    box-shadow 0.5s var(--ease-luxury);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -20px rgba(10, 10, 10, 0.2);
+}
+
+.hover-glow {
+  transition: all 0.5s var(--ease-luxury);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 30px rgba(201, 169, 97, 0.3);
+}
+
+/* ============================================================
+   FOCUS STATES
+   ============================================================ */
+
+*:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ============================================================
+   SMOOTH TRANSITIONS
+   ============================================================ */
+
+a,
+button {
+  transition: color 0.4s var(--ease-luxury),
+    background-color 0.4s var(--ease-luxury),
+    border-color 0.4s var(--ease-luxury),
+    opacity 0.4s var(--ease-luxury);
+}
+
+main {
+  animation: fadeIn 0.8s var(--ease-luxury);
+}
+
+/* ============================================================
+   GRADIENT TEXT
+   ============================================================ */
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #C9A961 0%, #E5D4A8 50%, #C9A961 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Shimmer Text — Next Level */
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    #0A0A0A 0%,
+    #C9A961 50%,
+    #0A0A0A 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: goldShimmer 3s linear infinite;
+}
+
+.dark .text-shimmer {
+  background: linear-gradient(
+    90deg,
+    #FAF8F4 0%,
+    #C9A961 50%,
+    #FAF8F4 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ============================================================
+   GOLD GLOW
+   ============================================================ */
+
+.glow-gold {
+  position: relative;
+}
+
+.glow-gold::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(circle, rgba(201, 169, 97, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  animation: glow 4s ease-in-out infinite;
+  z-index: -1;
+}
+
+/* Glow Pulse — Next Level */
+.glow-pulse {
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bone) 0%,
+    var(--color-cream) 50%,
+    var(--color-bone) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+}
+
+/* ============================================================
+   LAZY IMAGE LOADING — MOVED HERE (FIXED)
+   ============================================================ */
+
+img {
+  content-visibility: auto;
+}
+
+img[loading="lazy"] {
+  opacity: 0;
+  transition: opacity 0.6s var(--ease-smooth);
+}
+
+img[loading="lazy"][src] {
+  opacity: 1;
+}
+
+img {
+  transition: opacity 0.6s var(--ease-smooth);
+}
+
+/* ============================================================
+   NEXT LEVEL — CUSTOM CURSOR (DESKTOP)
+   ============================================================ */
+
+@media (hover: hover) and (pointer: fine) {
+  .custom-cursor {
+    cursor: none;
+  }
+
+  .custom-cursor a,
+  .custom-cursor button {
+    cursor: none;
+  }
+}
+
+.cursor-dot {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  background: var(--color-gold);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transition: transform 0.15s var(--ease-luxury),
+    width 0.3s var(--ease-luxury),
+    height 0.3s var(--ease-luxury),
+    background 0.3s var(--ease-luxury);
+  mix-blend-mode: difference;
+}
+
+.cursor-ring {
+  position: fixed;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-gold);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transition: transform 0.4s var(--ease-luxury),
+    width 0.4s var(--ease-luxury),
+    height 0.4s var(--ease-luxury),
+    opacity 0.4s var(--ease-luxury);
+}
+
+.cursor-ring.hover {
+  width: 60px;
+  height: 60px;
+  background: rgba(201, 169, 97, 0.1);
+}
+
+/* ============================================================
+   NEXT LEVEL — TEXT REVEAL ANIMATIONS
+   ============================================================ */
+
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 1s var(--ease-luxury),
+    transform 1s var(--ease-luxury);
+}
+
+.reveal-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.slide-in-left {
+  animation: slideInLeft 1s var(--ease-luxury) both;
+}
+
+.slide-in-right {
+  animation: slideInRight 1s var(--ease-luxury) both;
+}
+
+.zoom-in {
+  animation: zoomIn 0.8s var(--ease-luxury) both;
+}
+
+.rotate-in {
+  animation: rotateIn 1s var(--ease-luxury) both;
+}
+
+.bounce-subtle {
+  animation: bounceSubtle 2s ease-in-out infinite;
+}
+
+/* ============================================================
+   NEXT LEVEL — MAGNETIC BUTTON
+   ============================================================ */
+
+.magnetic {
+  display: inline-block;
+  transition: transform 0.3s var(--ease-luxury);
+  will-change: transform;
+}
+
+/* ============================================================
+   NEXT LEVEL — GRADIENT BORDERS
+   ============================================================ */
+
+.border-gradient-gold {
+  border: 1px solid transparent;
+  background: linear-gradient(var(--color-ivory), var(--color-ivory)) padding-box,
+    linear-gradient(135deg, #C9A961, #E5D4A8) border-box;
+}
+
+.dark .border-gradient-gold {
+  background: linear-gradient(#0A0A0A, #0A0A0A) padding-box,
+    linear-gradient(135deg, #C9A961, #E5D4A8) border-box;
+}
+
+/* ============================================================
+   NEXT LEVEL — NOISE TEXTURE
+   ============================================================ */
+
+.noise-bg {
+  position: relative;
+}
+
+.noise-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.02;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+/* ============================================================
+   NEXT LEVEL — ASPECT RATIO HELPERS
+   ============================================================ */
+
+.aspect-3-4 {
+  aspect-ratio: 3 / 4;
+}
+
+.aspect-4-5 {
+  aspect-ratio: 4 / 5;
+}
+
+.aspect-16-9 {
+  aspect-ratio: 16 / 9;
+}
+
+.aspect-square {
+  aspect-ratio: 1 / 1;
+}
+
+/* ============================================================
+   NEXT LEVEL — LINE CLAMP
+   ============================================================ */
+
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============================================================
+   NEXT LEVEL — MARQUEE CONTAINER
+   ============================================================ */
+
+.marquee-container {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.marquee-content {
+  display: inline-flex;
+  animation: marquee 40s linear infinite;
+  will-change: transform;
+}
+
+.marquee-content:hover {
+  animation-play-state: paused;
+}
+
+/* ============================================================
+   NEXT LEVEL — PARALLAX HELPERS
+   ============================================================ */
+
+.parallax-slow {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* ============================================================
+   MOBILE OPTIMIZATIONS
+   ============================================================ */
+
+@media (hover: none) {
+  .img-zoom:hover img {
+    transform: none;
+  }
+
+  .hover-lift:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .custom-cursor {
+    cursor: auto !important;
+  }
+
+  .cursor-dot,
+  .cursor-ring {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  button,
+  a {
+    min-height: 44px;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================================
+   ACCESSIBILITY
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   SAFE AREA (iPhone Notch)
+   ============================================================ */
+
+@supports (padding: max(0px)) {
+  .safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* ============================================================
+   PRINT STYLES (Invoices)
+   ============================================================ */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
 }
