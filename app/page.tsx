@@ -188,15 +188,15 @@ export default function Home() {
               href="/shop"
               className="inline-flex items-center justify-center px-10 py-5 bg-ivory text-ink text-label hover:bg-gold transition-colors duration-500 min-w-[220px]"
             >
-              Shop the Collection
-            </Link>
-            <Link
-              href="/about"
-              className="inline-flex items-center justify-center px-10 py-5 border border-ivory/60 text-ivory text-label hover:bg-ivory hover:text-ink transition-colors duration-500 backdrop-blur-sm min-w-[220px]"
-            >
-              Our Story
-            </Link>
-          </div>
+             Shop the Collection
+   </Link>
+    <Link
+     href="/about"
+    className="inline-flex items-center justify-center px-10 py-5 border border-ivory/60 text-ivory text-label hover:bg-ivory hover:text-ink transition-colors duration-500 backdrop-blur-sm min-w-[220px]"
+          >
+             Our Story
+          </Link>
+        </div>
 
         </div>
 
