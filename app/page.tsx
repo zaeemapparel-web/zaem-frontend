@@ -290,7 +290,7 @@ export default function Home() {
     name: "Woman",
     label: "Category 01",
     slug: "woman",
-    image: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80",
     desc: "Timeless elegance for the modern woman.",
   },
   {
