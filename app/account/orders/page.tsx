@@ -1,175 +1,149 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  User,
-  Package,
-  MapPin,
-  Heart,
-  LogOut,
-  ChevronRight,
-} from "lucide-react";
-import { useAuthStore } from "@/lib/store/authStore";
+import Link from "next/link";
+import { Package, ChevronRight, Loader2 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-export default function AccountPage() {
-  const router = useRouter();
-  const { user, isAuthenticated, logout, loadFromStorage, token } = useAuthStore();
-  const [stats, setStats] = useState({ orders: 0, wishlist: 0, addresses: 0 });
+export default function OrdersPage() {
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadFromStorage();
-  }, [loadFromStorage]);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      if (!isAuthenticated || !token) {
-        setLoading(false);
+    const fetchOrders = async () => {
+      const token = localStorage.getItem("zaem_token");
+      if (!token) {
+        window.location.href = "/account/login";
         return;
       }
-
       try {
-        const [ordersRes, wishlistRes, addressesRes] = await Promise.all([
-          fetch(`${API_URL}/api/orders`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_URL}/api/wishlist`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_URL}/api/addresses`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-
-        const [ordersData, wishlistData, addressesData] = await Promise.all([
-          ordersRes.json(),
-          wishlistRes.json(),
-          addressesRes.json(),
-        ]);
-
-        setStats({
-          orders: ordersData.success ? ordersData.count : 0,
-          wishlist: wishlistData.success ? wishlistData.count : 0,
-          addresses: addressesData.success ? addressesData.count : 0,
+        const res = await fetch(`${API_URL}/api/orders`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-      } catch (error) {
-        console.error(error);
+        const data = await res.json();
+        if (data.success) {
+          setOrders(data.data.orders || []);
+        } else {
+          setError(data.message || "Failed to load orders");
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Network error");
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
-  }, [isAuthenticated, token]);
-
-  // Not logged in → redirect
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push("/account/login");
-    }
-  }, [isAuthenticated, loading, router]);
-
-  if (loading || !isAuthenticated) {
-    return (
-      <main className="bg-ivory min-h-screen flex items-center justify-center">
-        <p className="font-display text-2xl text-muted">Loading...</p>
-      </main>
-    );
-  }
-
-  const MENU_ITEMS = [
-    {
-      icon: Package,
-      label: "My Orders",
-      desc: `${stats.orders} ${stats.orders === 1 ? "order" : "orders"}`,
-      href: "/account/orders",
-    },
-    {
-      icon: User,
-      label: "Profile",
-      desc: "Edit your personal info",
-      href: "/account/profile",
-    },
-    {
-      icon: MapPin,
-      label: "Addresses",
-      desc: `${stats.addresses} saved ${stats.addresses === 1 ? "address" : "addresses"}`,
-      href: "/account/addresses",
-    },
-    {
-      icon: Heart,
-      label: "Wishlist",
-      desc: `${stats.wishlist} saved ${stats.wishlist === 1 ? "item" : "items"}`,
-      href: "/wishlist",
-    },
-  ];
+    fetchOrders();
+  }, []);
 
   return (
     <main className="bg-ivory text-ink min-h-screen">
 
-      {/* ============ HEADER ============ */}
-      <section className="pt-16 md:pt-24 pb-10 md:pb-16 px-6 md:px-10 lg:px-16 border-b border-ink/10">
-        <div className="max-w-[1800px] mx-auto">
-          <p className="text-label text-gold mb-4">My Account</p>
-          <h1 className="display-xl mb-6">
-            Welcome,{" "}
-            <em className="font-display italic text-gold">
-              {user?.name?.split(" ")[0] || "there"}.
-            </em>
+      {/* Header */}
+      <section className="pt-8 md:pt-12 px-6 md:px-10 lg:px-16">
+        <div className="max-w-[1200px] mx-auto">
+          <nav className="flex items-center gap-2 text-label text-muted mb-6">
+            <Link href="/account" className="hover:text-ink transition-colors">
+              My Account
+            </Link>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-ink">My Orders</span>
+          </nav>
+
+          <h1 className="display-lg mb-3">
+            My <em className="font-display italic">Orders.</em>
           </h1>
-          <p className="text-muted text-sm md:text-base font-body">
-            Manage your orders, addresses, and personal details.
+          <p className="text-muted font-body mb-10">
+            Track and manage your orders.
           </p>
         </div>
       </section>
 
-      {/* ============ MENU ============ */}
-      <section className="py-10 md:py-16 px-6 md:px-10 lg:px-16">
+      {/* Orders List */}
+      <section className="pb-16 md:pb-24 px-6 md:px-10 lg:px-16">
         <div className="max-w-[1200px] mx-auto">
 
-          <div className="grid md:grid-cols-2 gap-4 md:gap-6">
-
-            {MENU_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="group flex items-center gap-6 p-6 md:p-8 border border-ink/10 hover:border-gold transition-all duration-500"
-              >
-                <div className="w-14 h-14 bg-bone group-hover:bg-gold flex items-center justify-center transition-colors duration-500 shrink-0">
-                  <item.icon
-                    className="w-6 h-6 group-hover:text-ivory transition-colors duration-500"
-                    strokeWidth={1.5}
-                  />
-                </div>
-                <div className="flex-1">
-                  <p className="font-display text-xl md:text-2xl mb-1">
-                    {item.label}
-                  </p>
-                  <p className="text-sm text-muted font-body">{item.desc}</p>
-                </div>
-                <ChevronRight
-                  className="w-5 h-5 text-muted group-hover:text-gold group-hover:translate-x-1 transition-all duration-500"
-                  strokeWidth={1.5}
-                />
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-6 h-6 animate-spin text-ink" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-20">
+              <p className="text-ink/70 font-body mb-4">{error}</p>
+              <Link href="/account" className="btn-primary">
+                Back to Account
               </Link>
-            ))}
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="text-center py-20 border border-ink/10">
+              <Package
+                className="w-12 h-12 text-ink/30 mx-auto mb-6"
+                strokeWidth={1}
+              />
+              <p className="font-display text-2xl mb-3">No orders yet</p>
+              <p className="text-muted text-sm font-body mb-8">
+                Start shopping to place your first order.
+              </p>
+              <Link href="/shop" className="btn-primary">
+                Shop Now
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {orders.map((order) => (
+                <Link
+                  key={order.id}
+                  href={`/account/orders/${order.id}`}
+                  className="block border border-ink/10 hover:border-ink transition-all duration-300 p-5 md:p-6"
+                >
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
 
-          </div>
+                    <div className="flex-1 min-w-[200px]">
+                      <p className="text-label text-muted mb-1">Order Number</p>
+                      <p className="font-display text-lg">{order.orderNumber}</p>
+                    </div>
 
-          {/* Logout */}
-          <button
-            onClick={() => {
-              logout();
-              router.push("/");
-            }}
-            className="mt-8 w-full md:w-auto flex items-center gap-3 text-label text-gold hover:text-ink transition-colors duration-500 py-4"
-          >
-            <LogOut className="w-4 h-4" strokeWidth={1.5} />
-            Logout
-          </button>
+                    <div className="flex-1 min-w-[120px]">
+                      <p className="text-label text-muted mb-1">Date</p>
+                      <p className="font-body text-sm">
+                        {new Date(order.createdAt).toLocaleDateString("en-PK", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </p>
+                    </div>
+
+                    <div className="flex-1 min-w-[120px]">
+                      <p className="text-label text-muted mb-1">Total</p>
+                      <p className="font-body text-sm">
+                        PKR {order.total.toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div className="flex-1 min-w-[120px]">
+                      <p className="text-label text-muted mb-1">Status</p>
+                      <span
+                        className={`text-label px-2 py-1 inline-block ${
+                          order.status === "DELIVERED"
+                            ? "bg-green-100 text-green-700"
+                            : order.status === "CANCELLED"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
+
+                    <ChevronRight className="w-5 h-5 text-ink/40 shrink-0" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
 
         </div>
       </section>
