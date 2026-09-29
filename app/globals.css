@@ -893,3 +893,29 @@ img {
     color: black;
   }
 }
+/* ============================================================
+   PRODUCT PAGE COMPACT — ZAEM
+   ============================================================ */
+
+@media (max-width: 767px) {
+  .product-image-compact {
+    max-height: 420px;
+  }
+}
+
+@media (min-width: 768px) {
+  .product-image-compact {
+    max-height: 550px;
+  }
+}
+
+/* Cart drawer smooth scroll */
+.cart-drawer-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* h-13 utility (custom) */
+.h-13 {
+  height: 3.25rem;
+}
