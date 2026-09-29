@@ -42,14 +42,14 @@ export const metadata: Metadata = {
   authors: [{ name: "ZAEM" }],
   creator: "ZAEM",
   publisher: "ZAEM",
-  metadataBase: new URL("https://zaemlifestyle.com"),
+  metadataBase: new URL("https://zaemstore.com"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://zaemlifestyle.com",
+    url: "https://zaemstore.com",
     siteName: "ZAEM",
     title: "ZAEM — Style. Redefined.",
     description:
