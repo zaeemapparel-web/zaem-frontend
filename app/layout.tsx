@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import AIChatbot from "@/components/AIChatbot";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -111,6 +112,7 @@ export default function RootLayout({
         <Footer />
         <CartDrawer />
         <WhatsAppButton />
+        <AIChatbot />
       </body>
     </html>
   );
