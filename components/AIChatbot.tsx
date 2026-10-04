@@ -722,10 +722,42 @@ export default function AIChatbot() {
                 </button>
               </div>
 
-              <p className="text-[9px] text-ink/40 text-center mt-1.5 font-body tracking-wider">
-                ZAEM AI <span className="text-gold">•</span> Powered by Groq
-                <span className="text-gold"> •</span> Ultra Pro Max
-              </p>
+            <div className="flex items-center justify-center gap-1.5 mt-2">
+  <span className="text-[9px] text-ink/40 font-body tracking-wider uppercase">
+    Powered by
+  </span>
+  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-ink/5">
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      className="text-gold"
+    >
+      <path
+        d="M12 2L4 7v10l8 5 8-5V7l-8-5z"
+        fill="currentColor"
+        opacity="0.15"
+      />
+      <path
+        d="M12 2L4 7v10l8 5 8-5V7l-8-5z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 8l-4 2.5v5l4 2.5 4-2.5v-5L12 8z"
+        fill="currentColor"
+      />
+    </svg>
+    <span className="text-[9px] font-display tracking-[0.15em] text-ink/70">
+      ZAEM
+    </span>
+    <span className="text-[9px] font-body tracking-[0.15em] text-gold/90 uppercase">
+      Tech
+    </span>
+  </div>
+</div>
             </div>
           </div>
         </>
