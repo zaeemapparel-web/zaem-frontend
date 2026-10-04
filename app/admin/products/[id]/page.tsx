@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { ArrowLeft, Plus, X, Sparkles, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/authStore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -26,6 +26,7 @@ export default function EditProductPage() {
   const [categories, setCategories] = useState<FlatCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -52,12 +53,11 @@ export default function EditProductPage() {
 
     const fetchData = async () => {
       try {
-        // Fetch categories (flatten 3-level)
+        // Categories
         const catRes = await fetch(`${API_URL}/api/categories`);
         const catData = await catRes.json();
         if (catData.success) {
           const flat: FlatCategory[] = [];
-
           catData.data.categories.forEach((parent: any) => {
             flat.push({
               id: parent.id,
@@ -66,7 +66,6 @@ export default function EditProductPage() {
               level: 0,
               fullPath: parent.name,
             });
-
             if (parent.children) {
               parent.children.forEach((child: any) => {
                 flat.push({
@@ -77,7 +76,6 @@ export default function EditProductPage() {
                   parentName: parent.name,
                   fullPath: `${parent.name} → ${child.name}`,
                 });
-
                 if (child.children) {
                   child.children.forEach((grandchild: any) => {
                     flat.push({
@@ -93,13 +91,11 @@ export default function EditProductPage() {
               });
             }
           });
-
           setCategories(flat);
         }
 
-        // Fetch product
+        // Product
         const prodRes = await fetch(`${API_URL}/api/products/id/${productId}`);
-
         if (!prodRes.ok) {
           const allRes = await fetch(`${API_URL}/api/products?limit=200`);
           const allData = await allRes.json();
@@ -173,6 +169,46 @@ export default function EditProductPage() {
     update("colors", form.colors.filter((c) => c !== color));
   };
 
+  // ⭐ AI GENERATE DESCRIPTION
+  const generateDescription = async () => {
+    if (!form.name || !form.price) {
+      setError("Product name aur price pehle bharein");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+
+    setGenerating(true);
+    setError("");
+
+    try {
+      const selectedCategory = categories.find((c) => c.id === form.categoryId);
+      const res = await fetch(`${API_URL}/api/ai/generate-description`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          price: Number(form.price),
+          category: selectedCategory?.name || "Fashion",
+          colors: form.colors,
+          sizes: form.sizes,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        update("description", data.data.description);
+      } else {
+        setError(data.message || "AI generation failed");
+        setTimeout(() => setError(""), 3000);
+      }
+    } catch (error) {
+      setError("AI service unavailable. Try again.");
+      setTimeout(() => setError(""), 3000);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -218,7 +254,7 @@ export default function EditProductPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="font-display text-2xl text-muted">Loading...</p>
+        <Loader2 className="w-6 h-6 animate-spin text-ink" />
       </div>
     );
   }
@@ -272,9 +308,27 @@ export default function EditProductPage() {
             </div>
 
             <div>
-              <label className="text-label text-muted block mb-3">
-                Description *
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-label text-muted">Description *</label>
+                <button
+                  type="button"
+                  onClick={generateDescription}
+                  disabled={generating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-gold to-[#B8935A] text-ink text-[10px] tracking-wider uppercase font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3 h-3" />
+                      Generate with AI
+                    </>
+                  )}
+                </button>
+              </div>
               <textarea
                 value={form.description}
                 onChange={(e) => update("description", e.target.value)}
@@ -282,6 +336,9 @@ export default function EditProductPage() {
                 rows={4}
                 className="w-full bg-transparent border border-ink/20 focus:border-gold outline-none p-4 text-sm font-body transition-colors resize-none"
               />
+              <p className="text-xs text-muted font-body mt-2">
+                💡 Tip: Name aur price bharein, phir AI button dabayein
+              </p>
             </div>
 
             <div>
@@ -295,7 +352,6 @@ export default function EditProductPage() {
                 className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
               >
                 <option value="">Select a category</option>
-
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.level === 0 && cat.name}
@@ -304,9 +360,6 @@ export default function EditProductPage() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-muted font-body mt-2">
-                💡 3 levels: Parent → Child → Sub-Child
-              </p>
             </div>
           </div>
         </div>
@@ -314,7 +367,6 @@ export default function EditProductPage() {
         {/* Pricing */}
         <div className="bg-ivory border border-ink/10 p-6 md:p-8">
           <h2 className="font-display text-xl mb-6">Pricing</h2>
-
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="text-label text-muted block mb-3">
@@ -396,7 +448,6 @@ export default function EditProductPage() {
         {/* Sizes */}
         <div className="bg-ivory border border-ink/10 p-6 md:p-8">
           <h2 className="font-display text-xl mb-6">Sizes</h2>
-
           <div className="flex gap-2 mb-4">
             <input
               type="text"
@@ -416,7 +467,6 @@ export default function EditProductPage() {
               Add
             </button>
           </div>
-
           <div className="flex flex-wrap gap-2">
             {form.sizes.map((size) => (
               <span
@@ -439,7 +489,6 @@ export default function EditProductPage() {
         {/* Colors */}
         <div className="bg-ivory border border-ink/10 p-6 md:p-8">
           <h2 className="font-display text-xl mb-6">Colors</h2>
-
           <div className="flex gap-2 mb-4">
             <input
               type="text"
@@ -459,7 +508,6 @@ export default function EditProductPage() {
               Add
             </button>
           </div>
-
           <div className="flex flex-wrap gap-2">
             {form.colors.map((color) => (
               <span
@@ -482,7 +530,6 @@ export default function EditProductPage() {
         {/* Inventory */}
         <div className="bg-ivory border border-ink/10 p-6 md:p-8">
           <h2 className="font-display text-xl mb-6">Inventory</h2>
-
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="text-label text-muted block mb-3">Stock</label>
@@ -514,7 +561,6 @@ export default function EditProductPage() {
               />
               <span className="text-sm font-body">Featured on homepage</span>
             </label>
-
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"

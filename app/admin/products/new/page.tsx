@@ -1,29 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X } from "lucide-react";
-import { useAuthStore } from "@/lib/store/authStore";
+import Link from "next/link";
+import {
+  ArrowLeft, Save, Sparkles, Plus, X, Loader2, Upload,
+} from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-interface FlatCategory {
-  id: string;
-  name: string;
-  slug: string;
-  level: number;
-  parentName?: string;
-  fullPath: string;
-}
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function NewProductPage() {
   const router = useRouter();
-  const { loadFromStorage } = useAuthStore();
-
-  const [categories, setCategories] = useState<FlatCategory[]>([]);
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -31,149 +24,143 @@ export default function NewProductPage() {
     price: "",
     comparePrice: "",
     categoryId: "",
-    images: [""],
-    sizes: [] as string[],
-    colors: [] as string[],
     stock: "",
     sku: "",
+    images: [""],
+    sizes: "",
+    colors: "",
     isFeatured: false,
+    isActive: true,
   });
 
-  const [sizeInput, setSizeInput] = useState("");
-  const [colorInput, setColorInput] = useState("");
-
-  // Load auth + categories (flattened with 3-level depth)
+  // Load categories
   useEffect(() => {
-    loadFromStorage();
-
     const fetchCategories = async () => {
       try {
         const res = await fetch(`${API_URL}/api/categories`);
         const data = await res.json();
         if (data.success) {
-          const flat: FlatCategory[] = [];
-
-          data.data.categories.forEach((parent: any) => {
-            // Level 1: Parent
-            flat.push({
-              id: parent.id,
-              name: parent.name,
-              slug: parent.slug,
-              level: 0,
-              fullPath: parent.name,
-            });
-
-            // Level 2: Children
-            if (parent.children) {
-              parent.children.forEach((child: any) => {
-                flat.push({
-                  id: child.id,
-                  name: child.name,
-                  slug: child.slug,
-                  level: 1,
-                  parentName: parent.name,
-                  fullPath: `${parent.name} → ${child.name}`,
-                });
-
-                // Level 3: Grandchildren
-                if (child.children) {
-                  child.children.forEach((grandchild: any) => {
-                    flat.push({
-                      id: grandchild.id,
-                      name: grandchild.name,
-                      slug: grandchild.slug,
-                      level: 2,
-                      parentName: child.name,
-                      fullPath: `${parent.name} → ${child.name} → ${grandchild.name}`,
-                    });
-                  });
-                }
-              });
-            }
-          });
-
-          setCategories(flat);
+          setCategories(data.data.categories || []);
         }
       } catch (error) {
         console.error(error);
       }
     };
     fetchCategories();
-  }, [loadFromStorage]);
+  }, []);
 
-  const update = (key: string, value: any) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const handleChange = (field: string, value: any) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const addImage = () => update("images", [...form.images, ""]);
-  const updateImage = (index: number, value: string) => {
+  const handleImageChange = (index: number, value: string) => {
     const newImages = [...form.images];
     newImages[index] = value;
-    update("images", newImages);
-  };
-  const removeImage = (index: number) => {
-    update("images", form.images.filter((_, i) => i !== index));
+    setForm((prev) => ({ ...prev, images: newImages }));
   };
 
-  const addSize = () => {
-    if (sizeInput.trim() && !form.sizes.includes(sizeInput.trim())) {
-      update("sizes", [...form.sizes, sizeInput.trim()]);
-      setSizeInput("");
-    }
-  };
-  const removeSize = (size: string) => {
-    update("sizes", form.sizes.filter((s) => s !== size));
+  const addImageField = () => {
+    setForm((prev) => ({ ...prev, images: [...prev.images, ""] }));
   };
 
-  const addColor = () => {
-    if (colorInput.trim() && !form.colors.includes(colorInput.trim())) {
-      update("colors", [...form.colors, colorInput.trim()]);
-      setColorInput("");
-    }
+  const removeImageField = (index: number) => {
+    if (form.images.length === 1) return;
+    const newImages = form.images.filter((_, i) => i !== index);
+    setForm((prev) => ({ ...prev, images: newImages }));
   };
-  const removeColor = (color: string) => {
-    update("colors", form.colors.filter((c) => c !== color));
+
+  // AI Description Generator
+  const generateDescription = async () => {
+    if (!form.name || !form.price) {
+      setError("Name aur price pehle bharein");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+
+    setGenerating(true);
+    setError("");
+
+    try {
+      const selectedCategory = categories.find((c) => c.id === form.categoryId);
+      const res = await fetch(`${API_URL}/api/ai/generate-description`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          price: Number(form.price),
+          category: selectedCategory?.name || "Fashion",
+          colors: form.colors
+            ? form.colors.split(",").map((c) => c.trim()).filter(Boolean)
+            : [],
+          sizes: form.sizes
+            ? form.sizes.split(",").map((s) => s.trim()).filter(Boolean)
+            : [],
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setForm((prev) => ({ ...prev, description: data.data.description }));
+      } else {
+        setError(data.message || "AI generation failed");
+      }
+    } catch (error) {
+      setError("AI service temporarily unavailable");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     setError("");
 
-    const token = localStorage.getItem("zaem_token");
-    if (!token) return;
-
-    if (!form.name || !form.description || !form.price || !form.categoryId) {
-      setError("Name, description, price, and category are required");
-      return;
-    }
-
-    setLoading(true);
-
     try {
+      const token = localStorage.getItem("zaem_token");
+      if (!token) {
+        router.push("/account/login");
+        return;
+      }
+
+      const payload = {
+        name: form.name.trim(),
+        description: form.description.trim(),
+        price: Number(form.price),
+        comparePrice: form.comparePrice ? Number(form.comparePrice) : null,
+        categoryId: form.categoryId || null,
+        stock: Number(form.stock) || 0,
+        sku: form.sku.trim() || null,
+        images: form.images.filter((img) => img.trim()),
+        sizes: form.sizes
+          ? form.sizes.split(",").map((s) => s.trim()).filter(Boolean)
+          : [],
+        colors: form.colors
+          ? form.colors.split(",").map((c) => c.trim()).filter(Boolean)
+          : [],
+        isFeatured: form.isFeatured,
+        isActive: form.isActive,
+      };
+
       const res = await fetch(`${API_URL}/api/products`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...form,
-          price: parseFloat(form.price),
-          comparePrice: form.comparePrice
-            ? parseFloat(form.comparePrice)
-            : null,
-          stock: parseInt(form.stock) || 0,
-          images: form.images.filter((img) => img.trim() !== ""),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
+
       if (data.success) {
-        router.push("/admin/products");
+        setSuccess("Product created successfully!");
+        setTimeout(() => router.push("/admin/products"), 1200);
       } else {
         setError(data.message || "Failed to create product");
       }
     } catch (error) {
+      console.error(error);
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -181,315 +168,355 @@ export default function NewProductPage() {
   };
 
   return (
-    <div>
+    <main className="bg-ivory text-ink min-h-screen">
 
       {/* Header */}
-      <div className="mb-10">
-        <Link
-          href="/admin/products"
-          className="inline-flex items-center gap-2 text-label text-muted hover:text-gold transition-colors mb-6"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.5} />
-          Back to Products
-        </Link>
-        <h1 className="display-lg">Add Product</h1>
+      <div className="sticky top-0 z-30 bg-ivory/95 backdrop-blur-xl border-b border-ink/10">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin/products"
+              className="flex items-center justify-center w-10 h-10 hover:bg-bone transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
+            </Link>
+            <div>
+              <p className="text-label text-ink/50 mb-0.5">Add Product</p>
+              <h1 className="font-display text-xl md:text-2xl">New Product</h1>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="flex items-center gap-2 px-5 py-3 bg-ink text-ivory text-label hover:bg-gold transition-colors disabled:opacity-50"
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {loading ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
 
-      {error && (
-        <div className="mb-8 p-4 bg-red-50 border-l-2 border-red-500 text-sm font-body text-red-700">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl">
-
-        {/* Basic Info */}
-        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
-          <h2 className="font-display text-xl mb-6">Basic Information</h2>
-
-          <div className="space-y-6">
-            <div>
-              <label className="text-label text-muted block mb-3">
-                Product Name *
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => update("name", e.target.value)}
-                required
-                placeholder="e.g., Ivory Linen Shirt"
-                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="text-label text-muted block mb-3">
-                Description *
-              </label>
-              <textarea
-                value={form.description}
-                onChange={(e) => update("description", e.target.value)}
-                required
-                rows={4}
-                placeholder="Detailed product description..."
-                className="w-full bg-transparent border border-ink/20 focus:border-gold outline-none p-4 text-sm font-body transition-colors resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-label text-muted block mb-3">
-                Category *
-              </label>
-              <select
-                value={form.categoryId}
-                onChange={(e) => update("categoryId", e.target.value)}
-                required
-                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
-              >
-                <option value="">Select a category</option>
-
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.level === 0 && cat.name}
-                    {cat.level === 1 && `  ↳ ${cat.name}`}
-                    {cat.level === 2 && `      ↳ ${cat.name}`}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted font-body mt-2">
-                💡 3 levels: Parent → Child → Sub-Child (e.g., Woman → Unstitched → Platinum)
-              </p>
-            </div>
+      {/* Form */}
+      <form
+        onSubmit={handleSubmit}
+        className="max-w-[1400px] mx-auto px-4 md:px-8 py-8"
+      >
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border-l-2 border-red-500 text-red-700 text-sm">
+            {error}
           </div>
-        </div>
+        )}
 
-        {/* Pricing */}
-        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
-          <h2 className="font-display text-xl mb-6">Pricing</h2>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="text-label text-muted block mb-3">
-                Price (PKR) *
-              </label>
-              <input
-                type="number"
-                value={form.price}
-                onChange={(e) => update("price", e.target.value)}
-                required
-                placeholder="4500"
-                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
-              />
-            </div>
-            <div>
-              <label className="text-label text-muted block mb-3">
-                Compare Price (PKR)
-              </label>
-              <input
-                type="number"
-                value={form.comparePrice}
-                onChange={(e) => update("comparePrice", e.target.value)}
-                placeholder="6500 (optional)"
-                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
-              />
-            </div>
+        {success && (
+          <div className="mb-6 p-4 bg-green-50 border-l-2 border-green-500 text-green-700 text-sm">
+            ✓ {success}
           </div>
-        </div>
+        )}
 
-        {/* Images */}
-        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-xl">Images</h2>
-            <button
-              type="button"
-              onClick={addImage}
-              className="text-label text-gold hover:text-ink transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
-              Add Image
-            </button>
-          </div>
+        <div className="grid lg:grid-cols-3 gap-6">
 
-          <div className="space-y-4">
-            {form.images.map((img, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="text-label text-muted w-6">{i + 1}.</span>
+          {/* LEFT — Main Info */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* Basic Info */}
+            <div className="bg-white border border-ink/10 p-6 space-y-5">
+              <h2 className="font-display text-lg border-b border-ink/10 pb-3">
+                Basic Information
+              </h2>
+
+              <div>
+                <label className="text-label text-ink/60 block mb-2">
+                  Product Name *
+                </label>
                 <input
-                  type="url"
-                  value={img}
-                  onChange={(e) => updateImage(i, e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="flex-1 bg-transparent border-b border-ink/20 focus:border-gold outline-none py-2 text-sm font-body transition-colors"
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={(e) => handleChange("name", e.target.value)}
+                  placeholder="e.g., White Cotton Shirt"
+                  className="w-full bg-transparent border border-ink/20 focus:border-ink outline-none px-4 py-3 text-sm font-body"
                 />
-                {form.images.length > 1 && (
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-label text-ink/60">
+                    Description *
+                  </label>
                   <button
                     type="button"
-                    onClick={() => removeImage(i)}
-                    className="p-2 text-muted hover:text-red-500 transition-colors"
+                    onClick={generateDescription}
+                    disabled={generating}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-gold to-[#B8935A] text-ink text-[10px] tracking-wider uppercase font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    <X className="w-4 h-4" strokeWidth={1.5} />
+                    {generating ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3 h-3" />
+                        Generate with AI
+                      </>
+                    )}
                   </button>
-                )}
+                </div>
+                <textarea
+                  required
+                  rows={6}
+                  value={form.description}
+                  onChange={(e) => handleChange("description", e.target.value)}
+                  placeholder="Product description..."
+                  className="w-full bg-transparent border border-ink/20 focus:border-ink outline-none px-4 py-3 text-sm font-body resize-none"
+                />
+                <p className="text-xs text-ink/40 mt-1">
+                  💡 Tip: Name aur price bhar dein, phir AI button dabayein
+                </p>
               </div>
-            ))}
-          </div>
+            </div>
 
-          {form.images[0] && (
-            <div className="mt-6">
-              <p className="text-label text-muted mb-3">Preview</p>
-              <div className="w-32 h-40 bg-bone overflow-hidden">
-                <img
-                  src={form.images[0]}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
+            {/* Images */}
+            <div className="bg-white border border-ink/10 p-6 space-y-4">
+              <h2 className="font-display text-lg border-b border-ink/10 pb-3">
+                Product Images
+              </h2>
+
+              {form.images.map((img, index) => (
+                <div key={index} className="flex gap-2">
+                  <div className="flex-1 flex items-center gap-2 border border-ink/20 px-3">
+                    <Upload className="w-4 h-4 text-ink/40 shrink-0" />
+                    <input
+                      type="url"
+                      value={img}
+                      onChange={(e) => handleImageChange(index, e.target.value)}
+                      placeholder="https://images.unsplash.com/..."
+                      className="flex-1 bg-transparent outline-none py-3 text-sm font-body"
+                    />
+                  </div>
+                  {form.images.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeImageField(index)}
+                      className="w-12 flex items-center justify-center border border-ink/20 hover:bg-red-50 hover:border-red-500 hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={addImageField}
+                className="flex items-center gap-2 text-label text-ink/60 hover:text-ink transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add another image
+              </button>
+
+              {/* Image Preview */}
+              {form.images[0] && (
+                <div className="pt-3 border-t border-ink/10">
+                  <p className="text-label text-ink/50 mb-2">Preview</p>
+                  <img
+                    src={form.images[0]}
+                    alt="Preview"
+                    className="w-32 h-40 object-cover bg-bone"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.opacity = "0.3";
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Variants */}
+            <div className="bg-white border border-ink/10 p-6 space-y-5">
+              <h2 className="font-display text-lg border-b border-ink/10 pb-3">
+                Variants
+              </h2>
+
+              <div>
+                <label className="text-label text-ink/60 block mb-2">
+                  Sizes (comma separated)
+                </label>
+                <input
+                  type="text"
+                  value={form.sizes}
+                  onChange={(e) => handleChange("sizes", e.target.value)}
+                  placeholder="S, M, L, XL"
+                  className="w-full bg-transparent border border-ink/20 focus:border-ink outline-none px-4 py-3 text-sm font-body"
+                />
+              </div>
+
+              <div>
+                <label className="text-label text-ink/60 block mb-2">
+                  Colors (comma separated)
+                </label>
+                <input
+                  type="text"
+                  value={form.colors}
+                  onChange={(e) => handleChange("colors", e.target.value)}
+                  placeholder="Black, White, Cognac"
+                  className="w-full bg-transparent border border-ink/20 focus:border-ink outline-none px-4 py-3 text-sm font-body"
                 />
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Sizes */}
-        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
-          <h2 className="font-display text-xl mb-6">Sizes (Optional)</h2>
-
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={sizeInput}
-              onChange={(e) => setSizeInput(e.target.value)}
-              onKeyDown={(e) =>
-                e.key === "Enter" && (e.preventDefault(), addSize())
-              }
-              placeholder="e.g., S, M, L, XL"
-              className="flex-1 bg-transparent border-b border-ink/20 focus:border-gold outline-none py-2 text-sm font-body transition-colors"
-            />
-            <button
-              type="button"
-              onClick={addSize}
-              className="px-4 text-label text-gold hover:text-ink transition-colors"
-            >
-              Add
-            </button>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {form.sizes.map((size) => (
-              <span
-                key={size}
-                className="flex items-center gap-2 px-4 py-2 bg-bone text-label"
-              >
-                {size}
-                <button
-                  type="button"
-                  onClick={() => removeSize(size)}
-                  className="hover:text-red-500"
+          {/* RIGHT — Sidebar */}
+          <div className="space-y-6">
+
+            {/* Pricing */}
+            <div className="bg-white border border-ink/10 p-6 space-y-5">
+              <h2 className="font-display text-lg border-b border-ink/10 pb-3">
+                Pricing
+              </h2>
+
+              <div>
+                <label className="text-label text-ink/60 block mb-2">
+                  Price (PKR) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={form.price}
+                  onChange={(e) => handleChange("price", e.target.value)}
+                  placeholder="4500"
+                  className="w-full bg-transparent border border-ink/20 focus:border-ink outline-none px-4 py-3 text-sm font-body"
+                />
+              </div>
+
+              <div>
+                <label className="text-label text-ink/60 block mb-2">
+                  Compare Price (PKR)
+                </label>
+                <input
+                  type="number"
+                  value={form.comparePrice}
+                  onChange={(e) => handleChange("comparePrice", e.target.value)}
+                  placeholder="6000 (optional)"
+                  className="w-full bg-transparent border border-ink/20 focus:border-ink outline-none px-4 py-3 text-sm font-body"
+                />
+                <p className="text-xs text-ink/40 mt-1">
+                  Discount dikhane ke liye
+                </p>
+              </div>
+            </div>
+
+            {/* Organization */}
+            <div className="bg-white border border-ink/10 p-6 space-y-5">
+              <h2 className="font-display text-lg border-b border-ink/10 pb-3">
+                Organization
+              </h2>
+
+              <div>
+                <label className="text-label text-ink/60 block mb-2">
+                  Category *
+                </label>
+                <select
+                  required
+                  value={form.categoryId}
+                  onChange={(e) => handleChange("categoryId", e.target.value)}
+                  className="w-full bg-transparent border border-ink/20 focus:border-ink outline-none px-4 py-3 text-sm font-body"
                 >
-                  <X className="w-3 h-3" strokeWidth={2} />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
+                  <option value="">Select category</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-        {/* Colors */}
-        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
-          <h2 className="font-display text-xl mb-6">Colors (Optional)</h2>
+              <div>
+                <label className="text-label text-ink/60 block mb-2">
+                  Stock Quantity
+                </label>
+                <input
+                  type="number"
+                  value={form.stock}
+                  onChange={(e) => handleChange("stock", e.target.value)}
+                  placeholder="10"
+                  className="w-full bg-transparent border border-ink/20 focus:border-ink outline-none px-4 py-3 text-sm font-body"
+                />
+              </div>
 
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={colorInput}
-              onChange={(e) => setColorInput(e.target.value)}
-              onKeyDown={(e) =>
-                e.key === "Enter" && (e.preventDefault(), addColor())
-              }
-              placeholder="e.g., Ivory, Charcoal"
-              className="flex-1 bg-transparent border-b border-ink/20 focus:border-gold outline-none py-2 text-sm font-body transition-colors"
-            />
-            <button
-              type="button"
-              onClick={addColor}
-              className="px-4 text-label text-gold hover:text-ink transition-colors"
-            >
-              Add
-            </button>
-          </div>
+              <div>
+                <label className="text-label text-ink/60 block mb-2">
+                  SKU (optional)
+                </label>
+                <input
+                  type="text"
+                  value={form.sku}
+                  onChange={(e) => handleChange("sku", e.target.value)}
+                  placeholder="WHITE-SHIRT-001"
+                  className="w-full bg-transparent border border-ink/20 focus:border-ink outline-none px-4 py-3 text-sm font-body"
+                />
+              </div>
+            </div>
 
-          <div className="flex flex-wrap gap-2">
-            {form.colors.map((color) => (
-              <span
-                key={color}
-                className="flex items-center gap-2 px-4 py-2 bg-bone text-label"
-              >
-                {color}
-                <button
-                  type="button"
-                  onClick={() => removeColor(color)}
-                  className="hover:text-red-500"
-                >
-                  <X className="w-3 h-3" strokeWidth={2} />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
+            {/* Status */}
+            <div className="bg-white border border-ink/10 p-6 space-y-4">
+              <h2 className="font-display text-lg border-b border-ink/10 pb-3">
+                Status
+              </h2>
 
-        {/* Inventory */}
-        <div className="bg-ivory border border-ink/10 p-6 md:p-8">
-          <h2 className="font-display text-xl mb-6">Inventory</h2>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="text-label text-muted block mb-3">
-                Stock Quantity
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) => handleChange("isActive", e.target.checked)}
+                  className="w-4 h-4 accent-ink"
+                />
+                <span className="text-sm font-body">Active (visible on site)</span>
               </label>
-              <input
-                type="number"
-                value={form.stock}
-                onChange={(e) => update("stock", e.target.value)}
-                placeholder="25"
-                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
-              />
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.isFeatured}
+                  onChange={(e) => handleChange("isFeatured", e.target.checked)}
+                  className="w-4 h-4 accent-ink"
+                />
+                <span className="text-sm font-body">Featured on homepage</span>
+              </label>
             </div>
-            <div>
-              <label className="text-label text-muted block mb-3">SKU</label>
-              <input
-                type="text"
-                value={form.sku}
-                onChange={(e) => update("sku", e.target.value)}
-                placeholder="ZAEM-SHIRT-001"
-                className="w-full bg-transparent border-b border-ink/20 focus:border-gold outline-none py-3 text-base font-body transition-colors"
-              />
-            </div>
+
           </div>
 
-          <label className="flex items-center gap-3 mt-6 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.isFeatured}
-              onChange={(e) => update("isFeatured", e.target.checked)}
-              className="w-4 h-4 accent-gold"
-            />
-            <span className="text-sm font-body">Featured on homepage</span>
-          </label>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 pt-4">
+        {/* Bottom Save Bar */}
+        <div className="mt-8 flex justify-end gap-3">
+          <Link
+            href="/admin/products"
+            className="px-6 py-3 border border-ink/20 text-label hover:bg-bone transition-colors"
+          >
+            Cancel
+          </Link>
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary disabled:opacity-50"
+            className="flex items-center gap-2 px-8 py-3 bg-ink text-ivory text-label hover:bg-gold transition-colors disabled:opacity-50"
           >
-            {loading ? "Creating..." : "Create Product"}
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {loading ? "Saving..." : "Create Product"}
           </button>
-          <Link href="/admin/products" className="btn-outline text-center">
-            Cancel
-          </Link>
         </div>
 
       </form>
-
-    </div>
+    </main>
   );
 }
