@@ -1,11 +1,34 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, Search, TrendingUp, Clock } from "lucide-react";
+import {
+  X,
+  Search,
+  TrendingUp,
+  Clock,
+  Sparkles,
+  ArrowRight,
+  ArrowUpRight,
+  Loader2,
+  ShoppingBag,
+  ChevronRight,
+  Command,
+  CornerDownLeft,
+} from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+// ==================== CONSTANTS ====================
+const RECENT_KEY = "zaem_search_history";
+const MAX_RECENT = 6;
 
 const TRENDING = [
   "Oud Perfume",
@@ -13,279 +36,592 @@ const TRENDING = [
   "Leather Tote",
   "Silk Dress",
   "Cashmere Coat",
+  "Winter Jacket",
 ];
 
+const POPULAR_CATEGORIES = [
+  { name: "Woman", slug: "woman", emoji: "👗" },
+  { name: "Man", slug: "man", emoji: "👔" },
+  { name: "Fragrances", slug: "fragrances", emoji: "💫" },
+  { name: "Bags", slug: "bags", emoji: "👜" },
+];
+
+// ==================== TYPES ====================
 interface SearchOverlayProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenAISearch?: () => void;
 }
 
-export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  comparePrice?: number;
+  images: string[];
+  category?: { name: string; slug: string };
+  stock: number;
+}
+
+// ==================== HELPERS ====================
+function getStoredHistory(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const saved = localStorage.getItem(RECENT_KEY);
+    return saved ? JSON.parse(saved).slice(0, MAX_RECENT) : [];
+  } catch {
+    return [];
+  }
+}
+
+// ==================== MAIN COMPONENT ====================
+export default function SearchOverlay({
+  isOpen,
+  onClose,
+  onOpenAISearch,
+}: SearchOverlayProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any[]>([]);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
+  const [activeResultIndex, setActiveResultIndex] = useState(-1);
+  const [mounted, setMounted] = useState(false);
 
-  // Focus input when opened
+  // ==================== FOCUS & RESET ON OPEN ====================
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-      // Load search history from localStorage
-      const saved = localStorage.getItem("zaem_search_history");
-      if (saved) {
-        try {
-          setHistory(JSON.parse(saved));
-        } catch {}
-      }
-    } else {
+      setMounted(true);
+      setHistory(getStoredHistory());
       setQuery("");
       setResults([]);
+      setActiveResultIndex(-1);
+      // Delay focus for animation
+      setTimeout(() => inputRef.current?.focus(), 180);
+    } else {
+      const timer = setTimeout(() => setMounted(false), 200);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
-  // Lock body scroll
+  // ==================== BODY SCROLL LOCK ====================
   useEffect(() => {
     if (isOpen) {
+      const scrollY = window.scrollY;
       document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width = "100%";
+      document.body.style.top = `-${scrollY}px`;
     } else {
+      const scrollY = document.body.style.top;
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+      document.body.style.top = "";
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
+      }
     }
     return () => {
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+      document.body.style.top = "";
     };
   }, [isOpen]);
 
-  // Live search — debounced
+  // ==================== DEBOUNCE ====================
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `${API_URL}/api/products?search=${encodeURIComponent(query)}&limit=6`
-        );
-        const data = await res.json();
-        if (data.success) {
-          setResults(data.data.products);
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
-
+    const timer = setTimeout(() => setDebouncedQuery(query), 280);
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Handle ESC key
+  // ==================== LIVE SEARCH ====================
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
+    if (!debouncedQuery.trim()) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+
+    const performSearch = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `${API_URL}/api/products?search=${encodeURIComponent(
+            debouncedQuery
+          )}&limit=8`
+        );
+        const data = await res.json();
+        if (data.success) {
+          setResults(data.data.products || []);
+        } else {
+          setResults([]);
+        }
+      } catch (error) {
+        console.error("Search error:", error);
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    performSearch();
+  }, [debouncedQuery]);
+
+  // ==================== SAVE HISTORY ====================
+  const saveToHistory = useCallback(
+    (term: string) => {
+      const trimmed = term.trim();
+      if (!trimmed) return;
+      const updated = [
+        trimmed,
+        ...history.filter((h) => h !== trimmed),
+      ].slice(0, MAX_RECENT);
+      setHistory(updated);
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+      } catch {
+        // Ignore
+      }
+    },
+    [history]
+  );
+
+  // ==================== HANDLERS ====================
+  const handleSubmit = useCallback(
+    (e?: React.FormEvent) => {
+      e?.preventDefault();
+      const trimmed = query.trim();
+      if (!trimmed) return;
+
+      saveToHistory(trimmed);
+      router.push(`/shop?search=${encodeURIComponent(trimmed)}`);
+      onClose();
+    },
+    [query, router, onClose, saveToHistory]
+  );
+
+  const handleTermClick = useCallback(
+    (term: string) => {
+      saveToHistory(term);
+      router.push(`/shop?search=${encodeURIComponent(term)}`);
+      onClose();
+    },
+    [router, onClose, saveToHistory]
+  );
+
+  const handleClearHistory = useCallback(() => {
+    setHistory([]);
+    try {
+      localStorage.removeItem(RECENT_KEY);
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  const handleAISearchClick = useCallback(() => {
+    onClose();
+    if (onOpenAISearch) {
+      setTimeout(() => onOpenAISearch(), 250);
+    }
+  }, [onClose, onOpenAISearch]);
+
+  // ==================== KEYBOARD NAVIGATION ====================
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveResultIndex((prev) =>
+          prev < results.length - 1 ? prev + 1 : prev
+        );
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveResultIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        return;
+      }
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (activeResultIndex >= 0 && results[activeResultIndex]) {
+          const product = results[activeResultIndex];
+          saveToHistory(query);
+          router.push(`/product/${product.slug}`);
+          onClose();
+        } else {
+          handleSubmit();
+        }
+        return;
+      }
+    },
+    [
+      results,
+      activeResultIndex,
+      query,
+      router,
+      onClose,
+      handleSubmit,
+      saveToHistory,
+    ]
+  );
+
+  // ==================== ESC TO CLOSE ====================
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    if (isOpen) {
-      window.addEventListener("keydown", handleEsc);
-      return () => window.removeEventListener("keydown", handleEsc);
-    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [isOpen, onClose]);
 
-  const saveToHistory = (searchTerm: string) => {
-    const newHistory = [
-      searchTerm,
-      ...history.filter((h) => h !== searchTerm),
-    ].slice(0, 5);
-    setHistory(newHistory);
-    localStorage.setItem("zaem_search_history", JSON.stringify(newHistory));
-  };
+  // ==================== FORMATTERS ====================
+  const formatPrice = (price: number) =>
+    `Rs. ${price.toLocaleString("en-PK")}`;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-    saveToHistory(query.trim());
-    router.push(`/shop?search=${encodeURIComponent(query.trim())}`);
-    onClose();
-  };
+  const hasQuery = query.trim().length > 0;
+  const showResults = hasQuery && (loading || results.length > 0);
+  const showEmptyResults = hasQuery && !loading && results.length === 0;
 
-  const handleTrendingClick = (term: string) => {
-    setQuery(term);
-    saveToHistory(term);
-    router.push(`/shop?search=${encodeURIComponent(term)}`);
-    onClose();
-  };
-
-  const clearHistory = () => {
-    setHistory([]);
-    localStorage.removeItem("zaem_search_history");
-  };
-
-  if (!isOpen) return null;
+  if (!isOpen && !mounted) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] animate-[fadeIn_0.3s_ease-out]">
-      {/* Dark Background */}
+    <div
+      className={`fixed inset-0 z-[200] transition-opacity duration-200 ${
+        isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+      }`}
+    >
+      {/* ==================== BACKDROP ==================== */}
       <div
-        className="absolute inset-0 bg-ink/95 backdrop-blur-xl"
+        className="absolute inset-0 bg-ink/40 backdrop-blur-sm transition-opacity duration-200"
         onClick={onClose}
       />
 
-      {/* Content */}
-      <div className="relative h-full flex flex-col">
+      {/* ==================== PANEL ==================== */}
+      <div
+        ref={panelRef}
+        className={`absolute inset-x-0 top-0 max-h-[92vh] bg-ivory shadow-2xl flex flex-col transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+          isOpen
+            ? "translate-y-0 opacity-100"
+            : "-translate-y-4 opacity-0"
+        }`}
+      >
+        {/* ==================== SEARCH INPUT HEADER ==================== */}
+        <div className="shrink-0 border-b border-ink/10 bg-ivory">
+          <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-4 md:py-5">
+            {/* Top row: label + close */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Search className="w-3.5 h-3.5 text-ink/40" strokeWidth={2} />
+                <p className="text-[10px] uppercase tracking-[0.25em] text-ink/50 font-body font-medium">
+                  Search ZAEM
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-9 h-9 flex items-center justify-center hover:bg-ink/5 rounded-full transition-colors active:scale-90"
+                aria-label="Close search"
+              >
+                <X className="w-5 h-5 text-ink/70" strokeWidth={2} />
+              </button>
+            </div>
 
-        {/* Top Bar */}
-        <div className="flex items-center justify-between px-6 md:px-12 lg:px-20 py-6 border-b border-ivory/10">
-          <div className="flex items-center gap-3">
-            <Search className="w-5 h-5 text-gold" strokeWidth={1.5} />
-            <p className="text-label text-ivory/60">Search ZAEM</p>
+            {/* Input field */}
+            <form onSubmit={handleSubmit} className="relative">
+              <div className="flex items-center gap-3 bg-white border border-ink/15 rounded-xl px-4 py-3.5 focus-within:border-ink/40 transition-all duration-200">
+                <Search
+                  className="w-5 h-5 text-ink/40 shrink-0"
+                  strokeWidth={1.8}
+                />
+
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setActiveResultIndex(-1);
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Search products, categories..."
+                  className="flex-1 bg-transparent outline-none text-[15px] md:text-base font-body text-ink placeholder:text-ink/40"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                />
+
+                {query && !loading && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      setActiveResultIndex(-1);
+                      inputRef.current?.focus();
+                    }}
+                    className="w-6 h-6 flex items-center justify-center hover:bg-ink/5 rounded-full transition-colors shrink-0"
+                    aria-label="Clear"
+                  >
+                    <X className="w-3.5 h-3.5 text-ink/50" strokeWidth={2} />
+                  </button>
+                )}
+
+                {loading && (
+                  <Loader2
+                    className="w-4 h-4 text-ink/40 animate-spin shrink-0"
+                    strokeWidth={2}
+                  />
+                )}
+
+                {!loading && !query && (
+                  <div className="hidden md:flex items-center gap-1 shrink-0">
+                    <kbd className="px-1.5 py-0.5 bg-bone text-[9px] font-body text-ink/50 rounded border border-ink/10">
+                      ESC
+                    </kbd>
+                  </div>
+                )}
+              </div>
+            </form>
+
+            {/* ==================== AI SEARCH BUTTON (PROMINENT) ==================== */}
+            {onOpenAISearch && (
+              <button
+                onClick={handleAISearchClick}
+                className="mt-3 w-full flex items-center justify-between gap-3 px-4 py-3 bg-ink text-white rounded-xl hover:bg-ink/90 active:scale-[0.99] transition-all duration-200 group shadow-sm"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-white/20 transition-colors">
+                    <Sparkles
+                      className="w-4 h-4 text-white"
+                      strokeWidth={2}
+                    />
+                  </div>
+                  <div className="text-left min-w-0 flex-1">
+                    <p className="text-sm font-body font-medium leading-tight">
+                      Search with AI
+                    </p>
+                    <p className="text-[11px] text-white/60 font-body leading-tight mt-0.5 truncate">
+                      "shaadi ke liye red dress under 5000"
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight
+                  className="w-4 h-4 text-white/70 group-hover:translate-x-1 transition-transform shrink-0"
+                  strokeWidth={2}
+                />
+              </button>
+            )}
           </div>
-          <button
-            onClick={onClose}
-            className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-ivory/10 transition-colors"
-            aria-label="Close search"
-          >
-            <X className="w-5 h-5 text-ivory" strokeWidth={1.5} />
-          </button>
         </div>
 
-        {/* Search Input */}
-        <div className="px-6 md:px-12 lg:px-20 py-8 md:py-12">
-          <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search products..."
-              className="w-full bg-transparent text-ivory placeholder:text-ivory/30 text-3xl md:text-5xl lg:text-6xl font-display outline-none border-b-2 border-ivory/20 focus:border-gold transition-colors duration-500 pb-4"
-            />
-          </form>
-        </div>
-
-        {/* Results / Trending / History */}
-        <div className="flex-1 overflow-y-auto px-6 md:px-12 lg:px-20 pb-12">
-
-          <div className="max-w-4xl mx-auto">
-
-            {/* Loading */}
-            {loading && (
-              <div className="py-8">
-                <p className="text-label text-gold animate-pulse">Searching...</p>
+        {/* ==================== BODY ==================== */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-6">
+            {/* ==================== LOADING ==================== */}
+            {loading && !results.length && (
+              <div className="py-12 flex flex-col items-center gap-3">
+                <Loader2
+                  className="w-5 h-5 text-ink/40 animate-spin"
+                  strokeWidth={2}
+                />
+                <p className="text-[11px] uppercase tracking-widest text-ink/50 font-body">
+                  Searching...
+                </p>
               </div>
             )}
 
-            {/* Results */}
-            {!loading && query && results.length > 0 && (
-              <div className="py-6">
-                <p className="text-label text-gold mb-6">
-                  {results.length} {results.length === 1 ? "Result" : "Results"}
-                </p>
-
-                <div className="space-y-1">
-                  {results.map((product) => (
-                    <Link
-                      key={product.id}
-                      href={`/product/${product.slug}`}
-                      onClick={() => {
-                        saveToHistory(query);
-                        onClose();
-                      }}
-                      className="flex items-center gap-4 md:gap-6 p-4 hover:bg-ivory/5 transition-colors group"
-                    >
-                      <div className="w-14 h-20 md:w-16 md:h-24 bg-bone shrink-0 overflow-hidden">
-                        {product.images?.[0] ? (
-                          <img
-                            src={product.images[0]}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <span className="font-display text-lg text-ink/10">
-                              Z
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-label text-gold mb-1">
-                          {product.category?.name || "ZAEM"}
-                        </p>
-                        <p className="font-display text-lg md:text-xl text-ivory group-hover:text-gold transition-colors truncate">
-                          {product.name}
-                        </p>
-                        <p className="text-sm text-ivory/60 font-body mt-1">
-                          PKR {product.price.toLocaleString()}
-                        </p>
-                      </div>
-
-                      <div className="shrink-0 hidden md:block">
-                        <span className="text-label text-ivory/40 group-hover:text-gold transition-colors">
-                          View →
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
+            {/* ==================== RESULTS ==================== */}
+            {!loading && results.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-ink/50 font-body font-medium">
+                    {results.length}{" "}
+                    {results.length === 1 ? "Result" : "Results"}
+                  </p>
+                  <button
+                    onClick={handleSubmit}
+                    className="text-[10px] uppercase tracking-[0.2em] text-ink/50 hover:text-ink font-body font-medium transition-colors flex items-center gap-1"
+                  >
+                    View All
+                    <ChevronRight className="w-3 h-3" strokeWidth={2} />
+                  </button>
                 </div>
 
-                {/* View All */}
-                <button
-                  onClick={() => {
-                    saveToHistory(query);
-                    router.push(`/shop?search=${encodeURIComponent(query)}`);
-                    onClose();
-                  }}
-                  className="mt-6 w-full py-4 border border-ivory/20 text-label text-ivory hover:bg-gold hover:text-ink hover:border-gold transition-all duration-500"
-                >
-                  View All Results →
-                </button>
+                {/* Product grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                  {results.map((product, idx) => {
+                    const hasDiscount =
+                      product.comparePrice &&
+                      product.comparePrice > product.price;
+                    const isActive = idx === activeResultIndex;
+
+                    return (
+                      <Link
+                        key={product.id}
+                        href={`/product/${product.slug}`}
+                        onClick={() => {
+                          saveToHistory(query);
+                          onClose();
+                        }}
+                        onMouseEnter={() => setActiveResultIndex(idx)}
+                        onMouseLeave={() => setActiveResultIndex(-1)}
+                        className={`group block transition-all duration-200 ${
+                          isActive ? "scale-[1.02]" : ""
+                        }`}
+                      >
+                        <div
+                          className={`relative aspect-[3/4] bg-bone rounded-lg overflow-hidden mb-2.5 transition-all duration-300 ${
+                            isActive
+                              ? "ring-2 ring-ink ring-offset-2 ring-offset-ivory"
+                              : ""
+                          }`}
+                        >
+                          {product.images?.[0] ? (
+                            <img
+                              src={product.images[0]}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ShoppingBag
+                                className="w-8 h-8 text-ink/15"
+                                strokeWidth={1.5}
+                              />
+                            </div>
+                          )}
+
+                          {hasDiscount && (
+                            <div className="absolute top-2 left-2 bg-ink text-white text-[9px] tracking-widest uppercase px-2 py-1 rounded">
+                              Sale
+                            </div>
+                          )}
+                        </div>
+
+                        <p className="text-[9px] uppercase tracking-widest text-ink/50 font-body mb-1 truncate">
+                          {product.category?.name || "ZAEM"}
+                        </p>
+                        <h3 className="font-display text-sm md:text-base leading-tight line-clamp-2 mb-1 group-hover:text-ink/70 transition-colors">
+                          {product.name}
+                        </h3>
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                          <p className="font-body text-xs md:text-sm text-ink font-medium">
+                            {formatPrice(product.price)}
+                          </p>
+                          {hasDiscount && (
+                            <p className="font-body text-[10px] text-ink/40 line-through">
+                              {formatPrice(product.comparePrice!)}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {/* Bottom AI Suggestion */}
+                {onOpenAISearch && (
+                  <button
+                    onClick={handleAISearchClick}
+                    className="mt-6 w-full flex items-center justify-between gap-3 px-4 py-3 bg-white border border-ink/10 rounded-xl hover:border-ink/30 hover:shadow-sm transition-all duration-200 group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 bg-ink rounded-lg flex items-center justify-center shrink-0">
+                        <Sparkles
+                          className="w-4 h-4 text-white"
+                          strokeWidth={2}
+                        />
+                      </div>
+                      <div className="text-left min-w-0 flex-1">
+                        <p className="text-sm font-body font-medium text-ink leading-tight">
+                          Didn't find what you need?
+                        </p>
+                        <p className="text-[11px] text-ink/50 font-body leading-tight mt-0.5">
+                          Try AI search for better results
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowUpRight
+                      className="w-4 h-4 text-ink/40 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0"
+                      strokeWidth={2}
+                    />
+                  </button>
+                )}
               </div>
             )}
 
-            {/* No Results */}
-            {!loading && query && results.length === 0 && (
-              <div className="py-12 text-center">
-                <p className="font-display text-2xl md:text-3xl text-ivory mb-3">
-                  No results found.
+            {/* ==================== NO RESULTS ==================== */}
+            {showEmptyResults && (
+              <div className="py-16 text-center">
+                <div className="w-16 h-16 bg-bone rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search
+                    className="w-6 h-6 text-ink/30"
+                    strokeWidth={1.5}
+                  />
+                </div>
+                <h3 className="font-display text-xl md:text-2xl text-ink mb-2">
+                  No results found
+                </h3>
+                <p className="text-ink/50 font-body text-sm mb-6 max-w-md mx-auto">
+                  We couldn't find anything for "{debouncedQuery}". Try a
+                  different keyword.
                 </p>
-                <p className="text-ivory/60 font-body">
-                  Try searching for something else.
-                </p>
+
+                {onOpenAISearch && (
+                  <button
+                    onClick={handleAISearchClick}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-ink text-white rounded-full text-sm font-body hover:bg-ink/90 active:scale-95 transition-all duration-200"
+                  >
+                    <Sparkles className="w-4 h-4" strokeWidth={2} />
+                    Try AI Search
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Default State — Trending + History */}
-            {!query && (
-              <div className="py-6 space-y-12">
-
-                {/* Search History */}
+            {/* ==================== DEFAULT STATE ==================== */}
+            {!hasQuery && (
+              <div className="space-y-8">
+                {/* ============ RECENT SEARCHES ============ */}
                 {history.length > 0 && (
                   <div>
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-4 h-4 text-gold" strokeWidth={1.5} />
-                        <p className="text-label text-ivory/60">Recent Searches</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Clock
+                          className="w-3.5 h-3.5 text-ink/40"
+                          strokeWidth={2}
+                        />
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-ink/50 font-body font-medium">
+                          Recent
+                        </p>
                       </div>
                       <button
-                        onClick={clearHistory}
-                        className="text-label text-ivory/40 hover:text-gold transition-colors"
+                        onClick={handleClearHistory}
+                        className="text-[10px] uppercase tracking-[0.2em] text-ink/40 hover:text-ink/70 font-body font-medium transition-colors"
                       >
                         Clear
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2">
                       {history.map((term) => (
                         <button
                           key={term}
-                          onClick={() => handleTrendingClick(term)}
-                          className="px-5 py-2.5 border border-ivory/20 text-ivory/80 hover:border-gold hover:text-gold transition-all duration-500 text-sm font-body"
+                          onClick={() => handleTermClick(term)}
+                          className="px-3.5 py-2 bg-white border border-ink/10 rounded-full text-xs font-body text-ink/80 hover:border-ink/30 hover:bg-ink hover:text-white transition-all duration-200 active:scale-95"
                         >
                           {term}
                         </button>
@@ -294,19 +630,24 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                   </div>
                 )}
 
-                {/* Trending */}
+                {/* ============ TRENDING ============ */}
                 <div>
-                  <div className="flex items-center gap-3 mb-6">
-                    <TrendingUp className="w-4 h-4 text-gold" strokeWidth={1.5} />
-                    <p className="text-label text-ivory/60">Trending Now</p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp
+                      className="w-3.5 h-3.5 text-ink/40"
+                      strokeWidth={2}
+                    />
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-ink/50 font-body font-medium">
+                      Trending Now
+                    </p>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2">
                     {TRENDING.map((term) => (
                       <button
                         key={term}
-                        onClick={() => handleTrendingClick(term)}
-                        className="px-5 py-2.5 border border-ivory/20 text-ivory/80 hover:border-gold hover:text-gold transition-all duration-500 text-sm font-body"
+                        onClick={() => handleTermClick(term)}
+                        className="px-3.5 py-2 bg-white border border-ink/10 rounded-full text-xs font-body text-ink/80 hover:border-ink/30 hover:bg-ink hover:text-white transition-all duration-200 active:scale-95"
                       >
                         {term}
                       </button>
@@ -314,13 +655,76 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                   </div>
                 </div>
 
+                {/* ============ CATEGORIES ============ */}
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-ink/50 font-body font-medium mb-3">
+                    Shop by Category
+                  </p>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3">
+                    {POPULAR_CATEGORIES.map((cat) => (
+                      <Link
+                        key={cat.slug}
+                        href={`/shop?category=${cat.slug}`}
+                        onClick={onClose}
+                        className="group flex items-center gap-3 p-3.5 bg-white border border-ink/10 rounded-xl hover:border-ink/30 hover:shadow-sm transition-all duration-200 active:scale-[0.98]"
+                      >
+                        <div className="w-9 h-9 bg-bone rounded-full flex items-center justify-center text-lg shrink-0 group-hover:bg-ink/5 transition-colors">
+                          {cat.emoji}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-body text-sm font-medium text-ink truncate">
+                            {cat.name}
+                          </p>
+                        </div>
+                        <ChevronRight
+                          className="w-4 h-4 text-ink/30 group-hover:text-ink group-hover:translate-x-0.5 transition-all shrink-0"
+                          strokeWidth={2}
+                        />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
-
           </div>
-
         </div>
 
+        {/* ==================== FOOTER HINT ==================== */}
+        <div className="shrink-0 border-t border-ink/10 bg-bone/40 hidden md:block">
+          <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-3 flex items-center justify-between text-[10px] text-ink/50 font-body">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 bg-white border border-ink/10 rounded text-[9px] font-medium">
+                  ↑
+                </kbd>
+                <kbd className="px-1.5 py-0.5 bg-white border border-ink/10 rounded text-[9px] font-medium">
+                  ↓
+                </kbd>
+                <span>Navigate</span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 bg-white border border-ink/10 rounded text-[9px] font-medium">
+                  <CornerDownLeft className="w-2.5 h-2.5 inline" />
+                </kbd>
+                <span>Select</span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 bg-white border border-ink/10 rounded text-[9px] font-medium">
+                  ESC
+                </kbd>
+                <span>Close</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-ink/40" strokeWidth={2} />
+              <span>Powered by ZAEM AI</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
