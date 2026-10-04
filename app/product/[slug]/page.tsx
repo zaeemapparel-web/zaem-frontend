@@ -12,8 +12,11 @@ import {
   Plus,
   ChevronRight,
   Star,
+  Sparkles,
 } from "lucide-react";
 import { useCartStore } from "@/lib/store/cartStore";
+import SizeRecommender from "@/components/SizeRecommender";
+import ProductRecommendations from "@/components/ProductRecommendations";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -33,6 +36,7 @@ export default function ProductPage() {
   const [inWishlist, setInWishlist] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [refreshReviews, setRefreshReviews] = useState(0);
+  const [sizeRecommenderOpen, setSizeRecommenderOpen] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -46,6 +50,21 @@ export default function ProductPage() {
           }
           if (data.data.product.colors?.length > 0) {
             setSelectedColor(data.data.product.colors[0]);
+          }
+
+          // Track recently viewed
+          if (data.data.product?.name) {
+            const viewed = JSON.parse(
+              localStorage.getItem("zaem_recently_viewed") || "[]"
+            );
+            const updated = [
+              data.data.product.name,
+              ...viewed.filter((n: string) => n !== data.data.product.name),
+            ].slice(0, 5);
+            localStorage.setItem(
+              "zaem_recently_viewed",
+              JSON.stringify(updated)
+            );
           }
         }
       } catch (error) {
@@ -373,13 +392,23 @@ export default function ProductPage() {
                 <div className="mb-8">
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-label text-muted">Size</p>
-                    <button
-                      type="button"
-                      onClick={() => setSizeGuideOpen(true)}
-                      className="text-label text-gold hover:text-ink transition-colors"
-                    >
-                      Size Guide
-                    </button>
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setSizeRecommenderOpen(true)}
+                        className="text-label text-gold hover:text-ink transition-colors flex items-center gap-1.5"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        Find My Size
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSizeGuideOpen(true)}
+                        className="text-label text-muted hover:text-ink transition-colors"
+                      >
+                        Size Guide
+                      </button>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2 md:gap-3">
                     {product.sizes.map((size: string) => (
@@ -588,7 +617,26 @@ export default function ProductPage() {
         categorySlug={product.category?.slug || ""}
         currentProductId={product.id}
       />
-      <SizeGuideModal isOpen={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} />
+
+      <ProductRecommendations
+        currentProductId={product.id}
+        title="Complete the Look"
+        subtitle="AI picked just for you"
+      />
+
+      <SizeGuideModal
+        isOpen={sizeGuideOpen}
+        onClose={() => setSizeGuideOpen(false)}
+      />
+
+      <SizeRecommender
+        isOpen={sizeRecommenderOpen}
+        onClose={() => setSizeRecommenderOpen(false)}
+        productId={product.id}
+        productName={product.name}
+        availableSizes={product.sizes || []}
+        onSelectSize={(size) => setSelectedSize(size)}
+      />
     </main>
   );
 }

@@ -1012,3 +1012,38 @@ img {
 .chatbot-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(10, 10, 10, 0.25);
 }
+/* ============================================================
+   AI FEATURES — ANIMATIONS
+   ============================================================ */
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes confidenceFill {
+  from { width: 0%; }
+  to { width: var(--confidence); }
+}

@@ -8,8 +8,11 @@ import {
   X,
   ChevronDown,
   ChevronRight,
+  Search,
+  Sparkles,
 } from "lucide-react";
 import QuickViewModal from "@/components/QuickViewModal";
+import AISearchBar from "@/components/AISearchBar";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -212,6 +215,7 @@ function ShopContent() {
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [quickViewProductId, setQuickViewProductId] = useState<string | null>(null);
+  const [aiSearchOpen, setAiSearchOpen] = useState(false);
 
   const buildQuery = () => {
     const params = new URLSearchParams();
@@ -287,6 +291,27 @@ function ShopContent() {
           <p className="text-muted text-sm md:text-base max-w-2xl font-body">
             A curated selection of premium pieces — designed with intention, crafted for the discerning.
           </p>
+        </div>
+      </section>
+
+      {/* AI SEARCH BAR — Pro Feature */}
+      <section className="px-6 md:px-10 lg:px-16 pt-6 md:pt-8">
+        <div className="max-w-[1800px] mx-auto">
+          <button
+            onClick={() => setAiSearchOpen(true)}
+            className="w-full flex items-center gap-3 px-4 md:px-6 py-4 bg-white border border-ink/15 hover:border-gold transition-all duration-300 text-left group"
+          >
+            <Search className="w-5 h-5 text-ink/50 group-hover:text-gold transition-colors shrink-0" strokeWidth={1.8} />
+            <span className="text-sm md:text-base text-ink/60 font-body flex-1 truncate">
+              Search with AI... try "red dress under 5000" or "shaadi ke liye outfit"
+            </span>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-gold to-[#B8935A] shrink-0">
+              <Sparkles className="w-3 h-3 text-ink" />
+              <span className="text-[10px] uppercase tracking-widest text-ink font-medium hidden sm:inline">
+                AI
+              </span>
+            </div>
+          </button>
         </div>
       </section>
 
@@ -769,6 +794,12 @@ function ShopContent() {
       <QuickViewModal
         productId={quickViewProductId}
         onClose={() => setQuickViewProductId(null)}
+      />
+
+      {/* AI SEARCH BAR */}
+      <AISearchBar
+        isOpen={aiSearchOpen}
+        onClose={() => setAiSearchOpen(false)}
       />
 
     </main>
