@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
@@ -16,7 +16,7 @@ const playfair = Playfair_Display({
   display: "swap",
   weight: ["400", "500", "600", "700", "800", "900"],
   preload: true,
-  fallback: ["Georgia", "serif"],
+  fallback: ["Georgia", "Times New Roman", "serif"],
   adjustFontFallback: true,
 });
 
@@ -26,27 +26,15 @@ const inter = Inter({
   display: "swap",
   weight: ["300", "400", "500", "600", "700"],
   preload: true,
-  fallback: ["system-ui", "sans-serif"],
+  fallback: ["system-ui", "-apple-system", "sans-serif"],
   adjustFontFallback: true,
 });
 
-// ==================== TYPES ====================
-interface LayoutState {
-  shopAIOpen: boolean;
-  supportAIOpen: boolean;
-  cartOpen: boolean;
-  darkMode: boolean;
-  isOnline: boolean;
-  isMobile: boolean;
-  scrolled: boolean;
-  scrollProgress: number;
-  showScrollTop: boolean;
-  pageLoaded: boolean;
-}
-
 // ==================== CONSTANTS ====================
 const SCROLL_TOP_THRESHOLD = 800;
-const LOADER_DURATION = 800;
+const LOADER_DURATION = 600;
+const SESSION_KEY = "zaem_session_start";
+const VISITED_KEY = "zaem_visited";
 
 // ==================== MAIN LAYOUT ====================
 export default function RootLayout({
@@ -61,26 +49,62 @@ export default function RootLayout({
   const [darkMode, setDarkMode] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [scrollDirection, setScrollDirection] = useState<"up" | "down">("down");
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [pageLoaded, setPageLoaded] = useState(false);
+  const [isFirstVisit, setIsFirstVisit] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   // ==================== REFS ====================
   const rafRef = useRef<number | null>(null);
   const tickingRef = useRef(false);
+  const lastScrollY = useRef(0);
 
-  // ==================== 1. DARK MODE PERSISTENCE ====================
+  // ==================== 1. DARK MODE INIT ====================
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("zaem_dark_mode");
-    if (saved === "true") {
-      setDarkMode(true);
-      document.documentElement.classList.add("dark");
+    try {
+      const saved = localStorage.getItem("zaem_dark_mode");
+      if (saved === "true") {
+        setDarkMode(true);
+        document.documentElement.classList.add("dark");
+      }
+    } catch (e) {
+      // ignore
     }
   }, []);
 
-  // ==================== 2. ONLINE / OFFLINE DETECTION ====================
+  // ==================== 2. PREFERS REDUCED MOTION ====================
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mq.matches);
+
+    const handler = (e: MediaQueryListEvent) =>
+      setPrefersReducedMotion(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // ==================== 3. FIRST VISIT TRACKING ====================
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const visited = localStorage.getItem(VISITED_KEY);
+      if (!visited) {
+        setIsFirstVisit(true);
+        localStorage.setItem(VISITED_KEY, "true");
+      }
+      localStorage.setItem(SESSION_KEY, Date.now().toString());
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // ==================== 4. ONLINE/OFFLINE DETECTION ====================
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -88,14 +112,12 @@ export default function RootLayout({
       setIsOnline(true);
       window.dispatchEvent(new CustomEvent("zaem-online"));
     };
-
     const handleOffline = () => {
       setIsOnline(false);
       window.dispatchEvent(new CustomEvent("zaem-offline"));
     };
 
     setIsOnline(navigator.onLine);
-
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
@@ -105,21 +127,22 @@ export default function RootLayout({
     };
   }, []);
 
-  // ==================== 3. MOBILE DETECTION ====================
+  // ==================== 5. RESPONSIVE DETECTION ====================
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+    const checkDevice = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsTablet(width >= 768 && width < 1024);
     };
 
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-
-    return () => window.removeEventListener("resize", checkMobile);
+    checkDevice();
+    window.addEventListener("resize", checkDevice);
+    return () => window.removeEventListener("resize", checkDevice);
   }, []);
 
-  // ==================== 4. SCROLL PROGRESS + SHADOW ====================
+  // ==================== 6. SCROLL TRACKING (RAF Optimized) ====================
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -133,13 +156,21 @@ export default function RootLayout({
           document.documentElement.scrollHeight - windowHeight;
         const scrollTop = window.scrollY;
 
-        // Scroll progress (0-100)
+        // Progress (0-100)
         const progress =
           documentHeight > 0 ? (scrollTop / documentHeight) * 100 : 0;
-        setScrollProgress(Math.min(100, progress));
+        setScrollProgress(Math.min(100, Math.max(0, progress)));
 
         // Scrolled state
         setScrolled(scrollTop > 50);
+
+        // Scroll direction
+        if (scrollTop > lastScrollY.current + 5) {
+          setScrollDirection("down");
+        } else if (scrollTop < lastScrollY.current - 5) {
+          setScrollDirection("up");
+        }
+        lastScrollY.current = scrollTop;
 
         // Show scroll-to-top
         setShowScrollTop(scrollTop > SCROLL_TOP_THRESHOLD);
@@ -155,40 +186,61 @@ export default function RootLayout({
     };
   }, []);
 
-  // ==================== 5. PAGE LOADED FLAG ====================
+  // ==================== 7. PAGE LOADED FLAG ====================
   useEffect(() => {
     const timer = setTimeout(() => setPageLoaded(true), LOADER_DURATION);
     return () => clearTimeout(timer);
   }, []);
 
-  // ==================== 6. GLOBAL KEYBOARD SHORTCUTS ====================
+  // ==================== 8. KEYBOARD SHORTCUTS ====================
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + K → Search
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent("zaem-open-search"));
+      // Don't trigger if typing in input
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
       }
 
-      // Ctrl/Cmd + Shift + A → AI Chat
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "A") {
+      // Ctrl/Cmd + K → Search
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("zaem-open-search"));
+        return;
+      }
+
+      // Ctrl/Cmd + Shift + A → Shop AI
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "a") {
         e.preventDefault();
         setShopAIOpen(true);
+        return;
+      }
+
+      // Ctrl/Cmd + Shift + S → Support AI
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        setSupportAIOpen(true);
+        return;
       }
 
       // Ctrl/Cmd + Shift + C → Cart
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "C") {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "c") {
         e.preventDefault();
-        setCartOpen(true);
+        window.dispatchEvent(new CustomEvent("zaem-open-cart"));
+        return;
       }
 
-      // Escape → Close all modals
+      // Escape → Close all
       if (e.key === "Escape") {
         setShopAIOpen(false);
         setSupportAIOpen(false);
         setCartOpen(false);
+        return;
       }
     };
 
@@ -196,7 +248,7 @@ export default function RootLayout({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // ==================== 7. CART EVENTS ====================
+  // ==================== 9. CART EVENTS ====================
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -212,7 +264,23 @@ export default function RootLayout({
     };
   }, []);
 
-  // ==================== 8. PREVENT BODY SCROLL WHEN MODAL OPEN ====================
+  // ==================== 10. AI CHAT EVENTS ====================
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleOpenShopAI = () => setShopAIOpen(true);
+    const handleOpenSupportAI = () => setSupportAIOpen(true);
+
+    window.addEventListener("zaem-open-shop-ai", handleOpenShopAI);
+    window.addEventListener("zaem-open-support-ai", handleOpenSupportAI);
+
+    return () => {
+      window.removeEventListener("zaem-open-shop-ai", handleOpenShopAI);
+      window.removeEventListener("zaem-open-support-ai", handleOpenSupportAI);
+    };
+  }, []);
+
+  // ==================== 11. BODY SCROLL LOCK ====================
   useEffect(() => {
     const anyOpen = shopAIOpen || supportAIOpen || cartOpen;
 
@@ -220,66 +288,75 @@ export default function RootLayout({
       document.body.style.overflow = "hidden";
       document.body.style.position = "fixed";
       document.body.style.width = "100%";
+      document.body.style.top = `-${window.scrollY}px`;
     } else {
+      const scrollY = document.body.style.top;
       document.body.style.overflow = "";
       document.body.style.position = "";
       document.body.style.width = "";
+      document.body.style.top = "";
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
+      }
     }
 
     return () => {
       document.body.style.overflow = "";
       document.body.style.position = "";
       document.body.style.width = "";
+      document.body.style.top = "";
     };
   }, [shopAIOpen, supportAIOpen, cartOpen, isMobile]);
 
-  // ==================== 9. SCROLL TO TOP ====================
-  const scrollToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
-
-  // ==================== 10. TOGGLE DARK MODE ====================
-  const toggleDarkMode = useCallback(() => {
-    setDarkMode((prev) => {
-      const newMode = !prev;
-      if (newMode) {
-        document.documentElement.classList.add("dark");
-        localStorage.setItem("zaem_dark_mode", "true");
-      } else {
-        document.documentElement.classList.remove("dark");
-        localStorage.setItem("zaem_dark_mode", "false");
-      }
-      return newMode;
-    });
-  }, []);
-
-  // ==================== 11. VISIBILITY CHANGE ====================
+  // ==================== 12. VISIBILITY CHANGE ====================
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // Tab hidden — do nothing
+        window.dispatchEvent(new CustomEvent("zaem-tab-hidden"));
       } else {
-        // Tab visible — could refresh data
         window.dispatchEvent(new CustomEvent("zaem-tab-visible"));
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
   }, []);
 
-  // ==================== 12. SERVICE WORKER (PWA Ready) ====================
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator)) return;
-    if (process.env.NODE_ENV !== "production") return;
-
-    // Only in production
-    // navigator.serviceWorker.register("/sw.js").catch(() => {});
+  // ==================== 13. SCROLL TO TOP ====================
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
+
+  // ==================== 14. TOGGLE DARK MODE ====================
+  const toggleDarkMode = useCallback(() => {
+    setDarkMode((prev) => {
+      const newMode = !prev;
+      try {
+        if (newMode) {
+          document.documentElement.classList.add("dark");
+          localStorage.setItem("zaem_dark_mode", "true");
+        } else {
+          document.documentElement.classList.remove("dark");
+          localStorage.setItem("zaem_dark_mode", "false");
+        }
+      } catch (e) {
+        // ignore
+      }
+      return newMode;
+    });
+  }, []);
+
+  // ==================== 15. ANY MODAL OPEN ====================
+  const anyModalOpen = useMemo(
+    () => shopAIOpen || supportAIOpen || cartOpen,
+    [shopAIOpen, supportAIOpen, cartOpen]
+  );
 
   // ==================== RENDER ====================
   return (
@@ -296,7 +373,7 @@ export default function RootLayout({
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-        {/* ==================== THEME ==================== */}
+        {/* ==================== THEME COLORS ==================== */}
         <meta name="theme-color" content="#0A0A0A" />
         <meta
           name="theme-color"
@@ -325,19 +402,21 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="ZAEM" />
         <link rel="manifest" href="/manifest.json" />
 
-        {/* ==================== SEO ==================== */}
+        {/* ==================== SEO / MISC ==================== */}
         <meta name="format-detection" content="telephone=no" />
         <meta name="msapplication-TileColor" content="#0A0A0A" />
         <meta name="msapplication-tap-highlight" content="no" />
 
-        {/* ==================== PRELOAD ==================== */}
+        {/* ==================== PRELOAD / PRECONNECT ==================== */}
         <link
           rel="preconnect"
           href={process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}
         />
         <link rel="dns-prefetch" href="//images.unsplash.com" />
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
-        {/* ==================== DARK MODE INIT (Prevents FOUC) ==================== */}
+        {/* ==================== DARK MODE FOUC PREVENTION ==================== */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -352,21 +431,33 @@ export default function RootLayout({
             `,
           }}
         />
+
+        {/* ==================== GLOBAL STYLES ==================== */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              /* Prevent horizontal scroll */
+              html, body { max-width: 100vw; overflow-x: hidden; }
+              
+              /* Smooth font rendering */
+              body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+              
+              /* Better tap highlights on mobile */
+              * { -webkit-tap-highlight-color: transparent; }
+              
+              /* Prevent text size adjust on iOS */
+              html { -webkit-text-size-adjust: 100%; }
+              
+              /* Safe area for notched devices */
+              body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+            `,
+          }}
+        />
       </head>
 
-      <body
-        className="bg-ivory text-ink font-body antialiased overflow-x-hidden"
-        style={{
-          // Smooth font rendering
-          WebkitFontSmoothing: "antialiased",
-          MozOsxFontSmoothing: "grayscale",
-        }}
-      >
+      <body className="bg-ivory text-ink font-body antialiased overflow-x-hidden">
         {/* ==================== SCROLL PROGRESS BAR ==================== */}
-        <div
-          className="fixed top-0 left-0 right-0 h-[3px] z-[200] bg-transparent pointer-events-none"
-          aria-hidden="true"
-        >
+        <div className="fixed top-0 left-0 right-0 h-[3px] z-[200] bg-transparent pointer-events-none">
           <div
             className="h-full bg-ink dark:bg-white transition-all duration-150 ease-out origin-left"
             style={{
@@ -383,26 +474,28 @@ export default function RootLayout({
           </div>
         )}
 
-        {/* ==================== PAGE LOADER (First Visit) ==================== */}
+        {/* ==================== PAGE LOADER ==================== */}
         {!pageLoaded && (
-          <div className="fixed inset-0 z-[300] bg-ivory flex items-center justify-center transition-opacity duration-500 pointer-events-none opacity-0">
-            {/* Empty placeholder — loader disables after 800ms */}
+          <div className="fixed inset-0 z-[300] bg-ivory flex items-center justify-center transition-opacity duration-300 pointer-events-none opacity-0">
+            {/* Reserved for future loader */}
           </div>
         )}
 
-        {/* ==================== MAIN APP ==================== */}
+        {/* ==================== NAVBAR ==================== */}
         <Navbar />
 
+        {/* ==================== MAIN CONTENT ==================== */}
         <main
           className="min-h-screen transition-opacity duration-300"
-          style={{ opacity: pageLoaded ? 1 : 0.95 }}
+          style={{ opacity: pageLoaded ? 1 : 0.98 }}
         >
           {children}
         </main>
 
+        {/* ==================== FOOTER ==================== */}
         <Footer />
 
-        {/* ==================== DRAWERS / MODALS ==================== */}
+        {/* ==================== CART DRAWER ==================== */}
         <CartDrawer />
 
         {/* ==================== FLOATING ACTIONS ==================== */}
@@ -411,7 +504,7 @@ export default function RootLayout({
           onOpenSupportAI={() => setSupportAIOpen(true)}
         />
 
-        {/* ==================== AI CHATBOTS (DUAL MODE) ==================== */}
+        {/* ==================== AI CHATBOTS ==================== */}
         <AIChatbot
           isOpen={shopAIOpen}
           mode="shop"
@@ -424,7 +517,7 @@ export default function RootLayout({
           onClose={() => setSupportAIOpen(false)}
         />
 
-        {/* ==================== SCROLL TO TOP BUTTON ==================== */}
+        {/* ==================== SCROLL TO TOP ==================== */}
         {showScrollTop && (
           <button
             onClick={scrollToTop}
@@ -446,12 +539,16 @@ export default function RootLayout({
           </button>
         )}
 
-        {/* ==================== HIDDEN DATA ATTRIBUTES ==================== */}
+        {/* ==================== HIDDEN DATA ATTRS ==================== */}
         <div
           data-zaem-mode={darkMode ? "dark" : "light"}
-          data-zaem-device={isMobile ? "mobile" : "desktop"}
+          data-zaem-device={isMobile ? "mobile" : isTablet ? "tablet" : "desktop"}
           data-zaem-online={isOnline ? "yes" : "no"}
           data-zaem-scrolled={scrolled ? "yes" : "no"}
+          data-zaem-direction={scrollDirection}
+          data-zaem-modal={anyModalOpen ? "open" : "closed"}
+          data-zaem-motion={prefersReducedMotion ? "reduced" : "full"}
+          data-zaem-visit={isFirstVisit ? "first" : "return"}
           style={{ display: "none" }}
           aria-hidden="true"
         />
