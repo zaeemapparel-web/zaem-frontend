@@ -36,15 +36,66 @@ export default function AIChatbot() {
   const [isListening, setIsListening] = useState(false);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [hasUnread, setHasUnread] = useState(true);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+  const chatWindowRef = useRef<HTMLDivElement>(null);
 
-  // Load chat
+  // ==================== KEYBOARD DETECTION (VISUAL VIEWPORT API) ====================
   useEffect(() => {
-    const saved = localStorage.getItem("zaem_chat_v5");
+    if (typeof window === "undefined") return;
+
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    if (!window.visualViewport) {
+      return () => window.removeEventListener("resize", checkMobile);
+    }
+
+    const vv = window.visualViewport;
+
+    const handleResize = () => {
+      const windowHeight = window.innerHeight;
+      const viewportHeight = vv.height;
+      const keyboard = Math.max(0, windowHeight - viewportHeight);
+
+      // Only treat as keyboard if > 150px difference
+      if (keyboard > 150) {
+        setKeyboardHeight(keyboard);
+      } else {
+        setKeyboardHeight(0);
+      }
+    };
+
+    const handleScroll = () => {
+      // Handle iOS auto-scroll when keyboard opens
+      if (vv.height < window.innerHeight * 0.75) {
+        requestAnimationFrame(() => {
+          if (chatWindowRef.current && isOpen) {
+            chatWindowRef.current.scrollTop = 0;
+          }
+        });
+      }
+    };
+
+    vv.addEventListener("resize", handleResize);
+    vv.addEventListener("scroll", handleScroll);
+
+    return () => {
+      vv.removeEventListener("resize", handleResize);
+      vv.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", checkMobile);
+    };
+  }, [isOpen]);
+
+  // ==================== LOAD CHAT ====================
+  useEffect(() => {
+    const saved = localStorage.getItem("zaem_chat_v6");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -56,15 +107,15 @@ export default function AIChatbot() {
     }
   }, []);
 
-  // Save chat
+  // ==================== SAVE CHAT ====================
   useEffect(() => {
     if (messages.length > 1) {
       const clean = messages.map(({ isAnimating, ...rest }) => rest);
-      localStorage.setItem("zaem_chat_v5", JSON.stringify(clean.slice(-40)));
+      localStorage.setItem("zaem_chat_v6", JSON.stringify(clean.slice(-40)));
     }
   }, [messages]);
 
-  // Smooth scroll
+  // ==================== SCROLL ====================
   const scrollToBottom = useCallback((smooth = true) => {
     requestAnimationFrame(() => {
       setTimeout(() => {
@@ -72,7 +123,7 @@ export default function AIChatbot() {
           behavior: smooth ? "smooth" : "auto",
           block: "end",
         });
-      }, 30);
+      }, 50);
     });
   }, []);
 
@@ -80,19 +131,29 @@ export default function AIChatbot() {
     scrollToBottom();
   }, [messages, loading, scrollToBottom]);
 
-  // Lock body
+  // ==================== BODY LOCK ====================
   useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
+    if (isOpen && isMobile) {
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width = "100%";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+    }
     return () => {
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
     };
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   useEffect(() => {
     if (isOpen) setHasUnread(false);
   }, [isOpen]);
 
-  // Voice
+  // ==================== VOICE ====================
   useEffect(() => {
     if (typeof window === "undefined") return;
     const SR =
@@ -130,7 +191,7 @@ export default function AIChatbot() {
   const clearChat = () => {
     if (confirm("Clear all messages?")) {
       setMessages([{ ...WELCOME_MESSAGE, timestamp: Date.now() }]);
-      localStorage.removeItem("zaem_chat_v5");
+      localStorage.removeItem("zaem_chat_v6");
     }
   };
 
@@ -146,6 +207,7 @@ export default function AIChatbot() {
     reader.readAsDataURL(file);
   };
 
+  // ==================== SEND ====================
   const handleSend = useCallback(async (text?: string) => {
     const content = (text || input).trim();
     const imageToSend = pendingImage;
@@ -170,7 +232,6 @@ export default function AIChatbot() {
     setMessages(updatedMessages);
     setLoading(true);
 
-    // Auto mark animation done
     setTimeout(() => {
       setMessages((prev) =>
         prev.map((m) =>
@@ -196,7 +257,9 @@ export default function AIChatbot() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          message: content || "Analyze this image and tell me if you have similar products.",
+          message:
+            content ||
+            "Analyze this image and tell me if you have similar products.",
           image: imageToSend,
           history: messages.slice(-8).map((m) => ({
             role: m.role,
@@ -258,16 +321,22 @@ export default function AIChatbot() {
   }, [input, loading, messages, pendingImage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isMobile) {
       e.preventDefault();
       handleSend();
     }
+    // On mobile, Enter creates new line (like WhatsApp)
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     e.target.style.height = "36px";
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+  };
+
+  const handleFocus = () => {
+    // Scroll to bottom when keyboard opens
+    setTimeout(() => scrollToBottom(), 300);
   };
 
   const formatTime = (ts: number) =>
@@ -336,7 +405,7 @@ export default function AIChatbot() {
 
     return (
       <span
-        className="relative inline-flex items-center ml-1 tick-anim"
+        className="relative inline-flex items-center ml-1"
         style={{ width: "14px", height: "10px" }}
       >
         <svg
@@ -379,13 +448,20 @@ export default function AIChatbot() {
     );
   };
 
+  // Calculate dynamic height based on keyboard
+  const dynamicHeight = isMobile
+    ? keyboardHeight > 0
+      ? `calc(100dvh - ${keyboardHeight}px)`
+      : "100dvh"
+    : "auto";
+
   return (
     <>
       {/* Floating Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-24 right-5 z-[90] flex items-center gap-2.5 pl-3 pr-4 py-2.5 bg-ink text-ivory rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.25)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)] active:scale-95 transition-all duration-300 group chat-fab-float"
+          className="fixed bottom-24 right-5 z-[90] flex items-center gap-2.5 pl-3 pr-4 py-2.5 bg-ink text-ivory rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.25)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)] active:scale-95 transition-all duration-300 group"
           aria-label="Open AI Chat"
         >
           <div className="relative">
@@ -412,9 +488,33 @@ export default function AIChatbot() {
             className="fixed inset-0 bg-ink/50 z-[95] sm:hidden chat-overlay-fade"
           />
 
-          <div className="fixed z-[100] bg-[#F5F0E8] flex flex-col shadow-2xl overflow-hidden inset-0 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[420px] sm:h-[660px] sm:max-h-[88vh] sm:rounded-2xl sm:border sm:border-ink/10 chat-window-pop">
+          <div
+            ref={chatWindowRef}
+            className="fixed z-[100] bg-[#F5F0E8] flex flex-col shadow-2xl overflow-hidden chat-window-pop"
+            style={
+              isMobile
+                ? {
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: dynamicHeight,
+                    maxHeight: dynamicHeight,
+                    transition: "height 0.2s ease-out",
+                    willChange: "height",
+                  }
+                : {
+                    bottom: "24px",
+                    right: "24px",
+                    width: "420px",
+                    height: "660px",
+                    maxHeight: "88vh",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(10,10,10,0.1)",
+                  }
+            }
+          >
             {/* Header */}
-            <div className="flex items-center gap-3 px-3 py-3 bg-[#0A0A0A] text-ivory shrink-0 safe-top relative">
+            <div className="flex items-center gap-3 px-3 py-3 bg-[#0A0A0A] text-ivory shrink-0 relative">
               <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold to-transparent opacity-50" />
 
               <button
@@ -456,11 +556,13 @@ export default function AIChatbot() {
 
             {/* Messages */}
             <div
-              className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-1 chatbot-scroll chatbot-scroll-smooth"
+              className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-1 chatbot-scroll"
               style={{
                 backgroundColor: "#F5F0E8",
                 backgroundImage:
                   "radial-gradient(circle at 20% 30%, rgba(201,169,97,0.04) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(10,10,10,0.03) 0%, transparent 50%)",
+                WebkitOverflowScrolling: "touch",
+                overscrollBehavior: "contain",
               }}
             >
               {messages.map((msg, i) => {
@@ -560,7 +662,7 @@ export default function AIChatbot() {
             )}
 
             {/* Input */}
-            <div className="bg-[#F5F0E8] px-2 py-2 shrink-0 safe-bottom border-t border-ink/5">
+            <div className="bg-[#F5F0E8] px-2 py-2 shrink-0 border-t border-ink/5">
               <div className="flex items-end gap-1.5 bg-white rounded-2xl px-1.5 py-1.5 shadow-sm border border-gold/20 focus-within:border-gold/60 transition-all duration-300 input-focus-glow">
                 <input
                   ref={fileInputRef}
@@ -599,6 +701,7 @@ export default function AIChatbot() {
                   value={input}
                   onChange={handleTextareaChange}
                   onKeyDown={handleKeyDown}
+                  onFocus={handleFocus}
                   placeholder="Message ZAEM AI..."
                   rows={1}
                   className="flex-1 bg-transparent border-0 outline-none text-[15px] font-body py-2 resize-none max-h-28 leading-snug placeholder:text-ink/40 smooth-textarea"
