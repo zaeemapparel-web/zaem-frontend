@@ -3,8 +3,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   MessageCircle, X, Send, Bot, Mic, MicOff, Trash2,
-  Check, CheckCheck, ImageIcon,
+  Check, CheckCheck, ImageIcon, Sparkles, Package, Truck,
+  ShoppingBag, TrendingUp, RefreshCw,
 } from "lucide-react";
+import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -12,25 +14,32 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  image?: string; // base64 image
+  image?: string;
   timestamp: number;
   status?: "sent" | "delivered" | "read";
+  quickActions?: QuickAction[];
 }
 
-const QUICK_REPLIES = [
-  "What products?",
-  "Shipping?",
-  "Returns?",
-  "Track order",
-];
+interface QuickAction {
+  label: string;
+  query: string;
+}
 
 const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "Assalam-o-Alaikum! 👋\n\nMain ZAEM AI hoon — aapki shopping assistant.\n\nKya poochna chahenge?",
+    "Assalam-o-Alaikum! 👋\n\nMain **ZAEM AI** hoon — aapki personal shopping assistant.\n\nMain aapki madad kar sakta hoon:\n• Product dhoondne mein\n• Order track karne mein\n• Size suggest karne mein\n• Kuch bhi poochne mein\n\nKya jaanna chahenge?",
   timestamp: Date.now(),
   status: "read",
+  quickActions: [
+    { label: "🛍️ Products", query: "What products do you have?" },
+    { label: "🚚 Track Order", query: "Where is my order?" },
+    { label: "📦 Shipping", query: "What are your shipping charges?" },
+    { label: "🔄 Returns", query: "What is your return policy?" },
+    { label: "💎 New Arrivals", query: "Show me new arrivals" },
+    { label: "🎁 Best Sellers", query: "What are your best sellers?" },
+  ],
 };
 
 export default function AIChatbot() {
@@ -39,8 +48,8 @@ export default function AIChatbot() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [hasUnread, setHasUnread] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -49,13 +58,13 @@ export default function AIChatbot() {
 
   // Load chat
   useEffect(() => {
-    const saved = localStorage.getItem("zaem_chat_v3");
+    const saved = localStorage.getItem("zaem_chat_v4");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed.length > 0) {
           setMessages(parsed);
-          setShowQuickReplies(false);
+          setHasUnread(false);
         }
       } catch (e) {}
     }
@@ -64,7 +73,7 @@ export default function AIChatbot() {
   // Save chat
   useEffect(() => {
     if (messages.length > 1) {
-      localStorage.setItem("zaem_chat_v3", JSON.stringify(messages.slice(-30)));
+      localStorage.setItem("zaem_chat_v4", JSON.stringify(messages.slice(-40)));
     }
   }, [messages]);
 
@@ -90,6 +99,11 @@ export default function AIChatbot() {
     };
   }, [isOpen]);
 
+  // Mark as read when opened
+  useEffect(() => {
+    if (isOpen) setHasUnread(false);
+  }, [isOpen]);
+
   // Voice
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -113,7 +127,7 @@ export default function AIChatbot() {
 
   const toggleVoice = () => {
     if (!recognitionRef.current) {
-      alert("Voice not supported");
+      alert("Voice not supported on this browser");
       return;
     }
     if (isListening) {
@@ -128,12 +142,10 @@ export default function AIChatbot() {
   const clearChat = () => {
     if (confirm("Clear all messages?")) {
       setMessages([{ ...WELCOME_MESSAGE, timestamp: Date.now() }]);
-      localStorage.removeItem("zaem_chat_v3");
-      setShowQuickReplies(true);
+      localStorage.removeItem("zaem_chat_v4");
     }
   };
 
-  // Image upload
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -158,8 +170,7 @@ export default function AIChatbot() {
 
     setInput("");
     setPendingImage(null);
-    setShowQuickReplies(false);
-    if (textareaRef.current) textareaRef.current.style.height = "44px";
+    if (textareaRef.current) textareaRef.current.style.height = "36px";
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     const userMsg: Message = {
@@ -184,13 +195,18 @@ export default function AIChatbot() {
     }, 200);
 
     try {
+      // Get auth token for personalization
+      const token = localStorage.getItem("zaem_token");
+      const headers: any = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
       const res = await fetch(`${API_URL}/api/ai/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
-          message: content || "User sent a photo",
+          message: content || "Analyze this image and tell me if you have similar products.",
           image: imageToSend,
-          history: messages.slice(-6).map((m) => ({
+          history: messages.slice(-8).map((m) => ({
             role: m.role,
             content: m.content,
           })),
@@ -205,17 +221,22 @@ export default function AIChatbot() {
         )
       );
 
+      // Generate contextual quick actions based on AI response
+      const actions = generateQuickActions(data.data?.reply || "");
+
       const aiMsg: Message = {
         id: `a-${Date.now()}`,
         role: "assistant",
         content: data.success
           ? data.data.reply
-          : "Sorry, masla ho gaya. WhatsApp: +92 319 3773788",
+          : "Sorry, masla ho gaya. Please WhatsApp: +92 319 3773788",
         timestamp: Date.now(),
         status: "read",
+        quickActions: actions,
       };
 
       setMessages((prev) => [...prev, aiMsg]);
+      setHasUnread(true);
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
@@ -223,7 +244,8 @@ export default function AIChatbot() {
         {
           id: `e-${Date.now()}`,
           role: "assistant",
-          content: "Network issue. WhatsApp: +92 319 3773788",
+          content:
+            "Network issue. Please try again or WhatsApp: +92 319 3773788",
           timestamp: Date.now(),
           status: "read",
         },
@@ -232,6 +254,30 @@ export default function AIChatbot() {
       setLoading(false);
     }
   }, [input, loading, messages, pendingImage]);
+
+  // Smart quick actions based on AI response
+  const generateQuickActions = (reply: string): QuickAction[] => {
+    const lower = reply.toLowerCase();
+    const actions: QuickAction[] = [];
+
+    if (lower.includes("product") || lower.includes("collection")) {
+      actions.push({ label: "👗 View All", query: "Show me all products" });
+    }
+    if (lower.includes("order") || lower.includes("track")) {
+      actions.push({ label: "📦 My Orders", query: "Show my recent orders" });
+    }
+    if (lower.includes("size") || lower.includes("fit")) {
+      actions.push({ label: "📏 Size Guide", query: "Help me find my size" });
+    }
+    if (lower.includes("shipping")) {
+      actions.push({ label: "🚚 Shipping Info", query: "Shipping details" });
+    }
+    if (actions.length === 0) {
+      actions.push({ label: "🛍️ Shop Now", query: "Show me products" });
+    }
+
+    return actions.slice(0, 3);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -242,7 +288,7 @@ export default function AIChatbot() {
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    e.target.style.height = "40px";
+    e.target.style.height = "36px";
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
   };
 
@@ -253,10 +299,12 @@ export default function AIChatbot() {
       hour12: true,
     });
 
+  // Ultra smart content formatter
   const formatContent = (content: string) => {
-    // Remove markdown ** and replace with bold
+    // Split by bold markers
     const parts = content.split(/(\*\*[^*]+\*\*)/g);
     const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const pathRegex = /(\/[a-z]+\/[a-z0-9-]+)/gi;
 
     return parts.map((part, i) => {
       if (part.startsWith("**") && part.endsWith("**")) {
@@ -266,8 +314,11 @@ export default function AIChatbot() {
           </strong>
         );
       }
-      // URLs
-      return part.split(urlRegex).map((p, j) => {
+
+      // Match URLs and paths
+      const urlParts = part.split(urlRegex);
+      return urlParts.map((p, j) => {
+        // Full URLs
         if (p.match(urlRegex)) {
           return (
             <a
@@ -281,19 +332,37 @@ export default function AIChatbot() {
             </a>
           );
         }
-        return <span key={`${i}-${j}`}>{p}</span>;
+
+        // Product/category paths
+        const pathParts = p.split(pathRegex);
+        return pathParts.map((pp, k) => {
+          if (pp.match(pathRegex) && (pp.startsWith("/product/") || pp.startsWith("/shop"))) {
+            return (
+              <Link
+                key={`${i}-${j}-${k}`}
+                href={pp}
+                onClick={() => setIsOpen(false)}
+                className="underline text-gold hover:text-gold/80 font-medium"
+              >
+                {pp}
+              </Link>
+            );
+          }
+          return <span key={`${i}-${j}-${k}`}>{pp}</span>;
+        });
       });
     });
   };
 
-  // Custom tick component — ZAEM unique style
   const TickMark = ({ status }: { status?: string }) => {
     const isRead = status === "read";
     const isDelivered = status === "delivered" || isRead;
 
     return (
-      <span className="relative inline-flex items-center ml-1" style={{ width: "14px", height: "10px" }}>
-        {/* First tick */}
+      <span
+        className="relative inline-flex items-center ml-1"
+        style={{ width: "14px", height: "10px" }}
+      >
         <svg
           width="10"
           height="10"
@@ -311,7 +380,6 @@ export default function AIChatbot() {
             strokeLinejoin="round"
           />
         </svg>
-        {/* Second tick (only if delivered/read) */}
         {isDelivered && (
           <svg
             width="10"
@@ -341,16 +409,22 @@ export default function AIChatbot() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-24 right-5 z-[90] flex items-center gap-2.5 pl-3 pr-4 py-2.5 bg-ink text-ivory rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.25)] hover:shadow-[0_6px_28px_rgba(0,0,0,0.35)] active:scale-95 transition-all duration-300"
+          className="fixed bottom-24 right-5 z-[90] flex items-center gap-2.5 pl-3 pr-4 py-2.5 bg-ink text-ivory rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.25)] hover:shadow-[0_6px_28px_rgba(0,0,0,0.35)] active:scale-95 transition-all duration-300 group"
           aria-label="Open AI Chat"
         >
           <div className="relative">
-            <div className="w-8 h-8 bg-gold rounded-full flex items-center justify-center">
-              <Bot className="w-4 h-4 text-ink" strokeWidth={1.5} />
+            <div className="w-8 h-8 bg-gradient-to-br from-gold to-[#B8935A] rounded-full flex items-center justify-center">
+              <Bot className="w-4 h-4 text-ink" strokeWidth={1.8} />
             </div>
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-ink" />
+            {hasUnread && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+            )}
           </div>
-          <span className="text-xs font-body tracking-wider uppercase">Chat</span>
+          <span className="text-xs font-body tracking-wider uppercase">
+            Chat with AI
+          </span>
+          <Sparkles className="w-3.5 h-3.5 text-gold group-hover:rotate-12 transition-transform" />
         </button>
       )}
 
@@ -362,10 +436,9 @@ export default function AIChatbot() {
             className="fixed inset-0 bg-ink/50 z-[95] sm:hidden"
           />
 
-          <div className="fixed z-[100] bg-[#F5F0E8] flex flex-col shadow-2xl overflow-hidden inset-0 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[400px] sm:h-[640px] sm:max-h-[85vh] sm:rounded-2xl sm:border sm:border-ink/10">
-            {/* Header — ZAEM unique style */}
+          <div className="fixed z-[100] bg-[#F5F0E8] flex flex-col shadow-2xl overflow-hidden inset-0 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[420px] sm:h-[660px] sm:max-h-[88vh] sm:rounded-2xl sm:border sm:border-ink/10">
+            {/* Header */}
             <div className="flex items-center gap-3 px-3 py-3 bg-[#0A0A0A] text-ivory shrink-0 safe-top relative">
-              {/* Gold accent line */}
               <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold to-transparent opacity-50" />
 
               <button
@@ -378,17 +451,20 @@ export default function AIChatbot() {
 
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="relative shrink-0">
-                  <div className="w-9 h-9 bg-gradient-to-br from-gold to-gold/70 rounded-full flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-ink" strokeWidth={1.8} />
+                  <div className="w-10 h-10 bg-gradient-to-br from-gold to-[#B8935A] rounded-full flex items-center justify-center">
+                    <Bot className="w-4.5 h-4.5 text-ink" strokeWidth={1.8} />
                   </div>
                   <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-[#0A0A0A]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-display text-sm leading-tight truncate tracking-wide">
-                    ZAEM AI
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-display text-sm leading-tight truncate tracking-wide">
+                      ZAEM AI
+                    </p>
+                    <Sparkles className="w-3 h-3 text-gold" />
+                  </div>
                   <p className="text-[10px] text-gold/80 font-body tracking-widest uppercase">
-                    Online
+                    Online • Shop Manager
                   </p>
                 </div>
               </div>
@@ -396,7 +472,8 @@ export default function AIChatbot() {
               <button
                 onClick={clearChat}
                 className="p-2 hover:bg-ivory/10 rounded-full transition-colors shrink-0"
-                aria-label="Clear"
+                aria-label="Clear chat"
+                title="Clear chat"
               >
                 <Trash2 className="w-4 h-4" strokeWidth={1.5} />
               </button>
@@ -416,81 +493,79 @@ export default function AIChatbot() {
                 const showTail = i === 0 || messages[i - 1]?.role !== msg.role;
 
                 return (
-                  <div
-                    key={msg.id}
-                    className={`flex ${
-                      isUser ? "justify-end" : "justify-start"
-                    } animate-[msgIn_0.22s_ease-out]`}
-                  >
+                  <div key={msg.id}>
                     <div
-                      className={`relative max-w-[82%] shadow-sm ${
-                        isUser
-                          ? "bg-[#0A0A0A] text-ivory"
-                          : "bg-white text-ink"
-                      } ${
-                        showTail
-                          ? isUser
-                            ? "rounded-2xl rounded-br-sm"
-                            : "rounded-2xl rounded-bl-sm"
-                          : "rounded-2xl"
-                      }`}
+                      className={`flex ${
+                        isUser ? "justify-end" : "justify-start"
+                      } animate-[msgIn_0.22s_ease-out]`}
                     >
-                      {/* Image */}
-                      {msg.image && (
-                        <div className="p-1 pb-0">
-                          <img
-                            src={msg.image}
-                            alt="Upload"
-                            className="rounded-xl max-w-full max-h-64 object-cover"
-                          />
-                        </div>
-                      )}
+                      <div
+                        className={`relative max-w-[85%] shadow-sm ${
+                          isUser
+                            ? "bg-[#0A0A0A] text-ivory"
+                            : "bg-white text-ink"
+                        } ${
+                          showTail
+                            ? isUser
+                              ? "rounded-2xl rounded-br-sm"
+                              : "rounded-2xl rounded-bl-sm"
+                            : "rounded-2xl"
+                        }`}
+                      >
+                        {msg.image && (
+                          <div className="p-1 pb-0">
+                            <img
+                              src={msg.image}
+                              alt="Upload"
+                              className="rounded-xl max-w-full max-h-64 object-cover"
+                            />
+                          </div>
+                        )}
 
-                      <div className="px-3 py-2">
-                        <p className="text-[14px] leading-[1.4] font-body whitespace-pre-wrap break-words">
-                          {formatContent(msg.content)}
-                        </p>
+                        <div className="px-3.5 py-2.5">
+                          <p className="text-[14.5px] leading-[1.5] font-body whitespace-pre-wrap break-words">
+                            {formatContent(msg.content)}
+                          </p>
 
-                        <div
-                          className={`flex items-center justify-end gap-1 mt-0.5 -mb-0.5 ${
-                            isUser ? "text-ivory/60" : "text-ink/40"
-                          }`}
-                        >
-                          <span className="text-[9.5px] font-body">
-                            {formatTime(msg.timestamp)}
-                          </span>
-                          {isUser && <TickMark status={msg.status} />}
+                          <div
+                            className={`flex items-center justify-end gap-1 mt-1 -mb-0.5 ${
+                              isUser ? "text-ivory/60" : "text-ink/40"
+                            }`}
+                          >
+                            <span className="text-[9.5px] font-body">
+                              {formatTime(msg.timestamp)}
+                            </span>
+                            {isUser && <TickMark status={msg.status} />}
+                          </div>
                         </div>
                       </div>
                     </div>
+
+                    {/* Quick Actions for AI messages */}
+                    {!isUser &&
+                      msg.quickActions &&
+                      msg.quickActions.length > 0 &&
+                      i === messages.length - 1 && (
+                        <div className="flex flex-wrap gap-2 mt-2 ml-1 animate-[msgIn_0.3s_ease-out]">
+                          {msg.quickActions.map((action) => (
+                            <button
+                              key={action.label}
+                              onClick={() => handleSend(action.query)}
+                              className="px-3.5 py-1.5 bg-white border border-gold/40 rounded-full text-[11px] font-body text-ink hover:bg-gold hover:text-ink hover:border-gold active:scale-95 transition-all duration-200 shadow-sm"
+                            >
+                              {action.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 );
               })}
 
-              {/* Quick replies */}
-              {showQuickReplies && messages.length <= 1 && (
-                <div className="pt-3 pb-1 space-y-2 animate-[msgIn_0.3s_ease-out]">
-                  <p className="text-[10px] text-ink/50 uppercase tracking-[0.2em] font-body text-center">
-                    Quick replies
-                  </p>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {QUICK_REPLIES.map((q) => (
-                      <button
-                        key={q}
-                        onClick={() => handleSend(q)}
-                        className="px-3.5 py-1.5 bg-white border border-gold/30 rounded-full text-[11px] font-body text-ink hover:bg-ink hover:text-ivory hover:border-ink active:scale-95 transition-all duration-200 shadow-sm tracking-wide"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Typing */}
+              {/* Typing indicator */}
               {loading && (
                 <div className="flex justify-start animate-[msgIn_0.2s_ease-out]">
-                  <div className="bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm">
+                  <div className="bg-white rounded-2xl rounded-bl-sm px-3.5 py-3 shadow-sm">
                     <div className="flex gap-1 items-center h-4">
                       <span className="w-1.5 h-1.5 bg-gold rounded-full animate-[typing_1.2s_infinite]" />
                       <span
@@ -543,6 +618,7 @@ export default function AIChatbot() {
                   onClick={() => fileInputRef.current?.click()}
                   className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-ink/60 hover:text-gold hover:bg-gold/10 active:scale-90 transition-all"
                   aria-label="Attach image"
+                  title="Send photo"
                 >
                   <ImageIcon className="w-4.5 h-4.5" strokeWidth={1.8} />
                 </button>
@@ -554,7 +630,8 @@ export default function AIChatbot() {
                       ? "bg-red-500 text-white animate-pulse"
                       : "text-ink/60 hover:text-gold hover:bg-gold/10 active:scale-90"
                   }`}
-                  aria-label="Voice"
+                  aria-label="Voice input"
+                  title="Voice input"
                 >
                   {isListening ? (
                     <MicOff className="w-4 h-4" strokeWidth={1.8} />
@@ -568,7 +645,7 @@ export default function AIChatbot() {
                   value={input}
                   onChange={handleTextareaChange}
                   onKeyDown={handleKeyDown}
-                  placeholder="Message"
+                  placeholder="Message ZAEM AI..."
                   rows={1}
                   className="flex-1 bg-transparent border-0 outline-none text-[15px] font-body py-2 resize-none max-h-28 leading-snug placeholder:text-ink/40"
                   style={{ minHeight: "36px", height: "36px" }}
@@ -590,6 +667,7 @@ export default function AIChatbot() {
 
               <p className="text-[9px] text-ink/40 text-center mt-1.5 font-body tracking-wider">
                 ZAEM AI <span className="text-gold">•</span> Powered by Groq
+                <span className="text-gold"> •</span> Ultra Pro Max
               </p>
             </div>
           </div>
