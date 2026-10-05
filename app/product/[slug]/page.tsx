@@ -943,7 +943,7 @@ function ReviewCard({
       const data = await res.json();
       if (data.success) {
         setHelpful(data.helpful);
-        setHelpfulCount((prev) => (data.helpful ? prev + 1 : prev - 1));
+        setHelpfulCount((prev: number) => (data.helpful ? prev + 1 : prev - 1));
       }
     } catch (error) {
       console.error(error);
