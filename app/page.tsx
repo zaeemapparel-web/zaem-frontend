@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   ArrowDown,
   ArrowRight,
@@ -13,15 +19,11 @@ import {
   RotateCcw,
   Shield,
   Heart,
-  User,
-  Menu,
-  X,
-  ChevronDown,
 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// ==================== CATEGORIES (SYNCED WITH SHOP & ADMIN) ====================
+// ==================== CATEGORIES ====================
 const CATEGORIES = [
   {
     name: "Woman",
@@ -64,40 +66,8 @@ const TRUST_BADGES = [
   { icon: Shield, title: "Secure Payment", desc: "COD, JazzCash, EasyPaisa" },
 ];
 
-// ==================== TESTIMONIALS ====================
-const TESTIMONIALS = [
-  {
-    quote:
-      "The quality is exceptional. Every piece feels intentional and timeless — nothing like fast fashion.",
-    author: "Ayesha K.",
-    location: "Lahore",
-    rating: 5,
-  },
-  {
-    quote:
-      "I've been looking for premium clothing that actually lasts. ZAEM delivers on every promise.",
-    author: "Hassan R.",
-    location: "Karachi",
-    rating: 5,
-  },
-  {
-    quote:
-      "The craftsmanship is evident in every detail. My fragrance gets compliments every time.",
-    author: "Fatima S.",
-    location: "Islamabad",
-    rating: 5,
-  },
-];
-
 // ==================== MARQUEE ITEMS ====================
-const MARQUEE_ITEMS = [
-  "Woman",
-  "Man",
-  "Fragrances",
-  "Bags",
-  "New In",
-  "Sale",
-];
+const MARQUEE_ITEMS = ["Woman", "Man", "Fragrances", "Bags", "New In", "Sale"];
 
 // ==================== NEWSLETTER FORM ====================
 function NewsletterForm() {
@@ -202,7 +172,7 @@ function ProductCard({ product }: { product: any }) {
             src={product.images[0]}
             alt={product.name}
             loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 gpu-accelerate"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -222,7 +192,7 @@ function ProductCard({ product }: { product: any }) {
           </div>
         )}
 
-        <div className="absolute bottom-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute bottom-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 gpu-accelerate">
           <div className="w-9 h-9 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-ink hover:text-white transition-colors">
             <Heart className="w-3.5 h-3.5" strokeWidth={2} />
           </div>
@@ -232,7 +202,7 @@ function ProductCard({ product }: { product: any }) {
       <p className="text-[9px] uppercase tracking-widest text-ink/50 font-body mb-1 truncate">
         {product.category?.name || "ZAEM"}
       </p>
-      <h3 className="font-display text-sm md:text-base leading-tight line-clamp-2 mb-1.5 group-hover:text-ink/70 transition-colors">
+      <h3 className="font-display text-sm md:text-base leading-tight line-clamp-2 mb-1.5 group-hover:text-ink/70 transition-colors gpu-accelerate">
         {product.name}
       </h3>
       <div className="flex items-baseline gap-2 flex-wrap">
@@ -296,10 +266,56 @@ export default function Home() {
   const [loadingBest, setLoadingBest] = useState(true);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [scrollY, setScrollY] = useState(0);
-  const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set());
+  const [visibleSections, setVisibleSections] = useState<Set<string>>(
+    new Set()
+  );
+  const [performance, setPerformance] = useState({
+    targetFPS: 60,
+    deviceRefreshRate: 60,
+    isHighRefresh: false,
+    isBatterySaver: false,
+    isLowEnd: false,
+    reducedMotion: false,
+  });
 
   const heroRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // ==================== PERFORMANCE INIT ====================
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let manager: any = null;
+
+    const init = async () => {
+      try {
+        const module = await import("@/lib/performance");
+        manager = module.performanceManager;
+        if (manager) {
+          manager.init();
+          const unsubscribe = manager.subscribe((profile: any) => {
+            setPerformance(profile);
+
+            // Apply battery saver class
+            if (profile.isBatterySaver) {
+              document.body.classList.add("battery-saver");
+            } else {
+              document.body.classList.remove("battery-saver");
+            }
+          });
+          return unsubscribe;
+        }
+      } catch (e) {
+        console.log("Performance manager not available");
+      }
+    };
+
+    const cleanup = init();
+
+    return () => {
+      cleanup.then((unsub) => unsub && unsub());
+    };
+  }, []);
 
   // ==================== FETCH FEATURED PRODUCTS ====================
   useEffect(() => {
@@ -365,9 +381,9 @@ export default function Home() {
       try {
         const Lenis = (await import("lenis")).default;
         lenis = new Lenis({
-          duration: 1.2,
+          duration: performance.reducedMotion ? 0 : 1.2,
           easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-          smoothWheel: true,
+          smoothWheel: !performance.reducedMotion,
           wheelMultiplier: 1,
           touchMultiplier: 2,
           infinite: false,
@@ -387,9 +403,9 @@ export default function Home() {
     return () => {
       if (lenis) lenis.destroy();
     };
-  }, []);
+  }, [performance.reducedMotion]);
 
-  // ==================== SCROLL TRACKING (RAF Optimized) ====================
+  // ==================== RAF SCROLL TRACKING ====================
   useEffect(() => {
     let ticking = false;
     let rafId: number | null = null;
@@ -411,7 +427,7 @@ export default function Home() {
     };
   }, []);
 
-  // ==================== SCROLL REVEAL ANIMATIONS ====================
+  // ==================== SCROLL REVEAL ====================
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -427,8 +443,8 @@ export default function Home() {
         });
       },
       {
-        threshold: 0.15,
-        rootMargin: "0px 0px -100px 0px",
+        threshold: 0.1,
+        rootMargin: "0px 0px -80px 0px",
       }
     );
 
@@ -440,32 +456,36 @@ export default function Home() {
     };
   }, []);
 
-  // ==================== SECTION VISIBILITY HELPER ====================
+  // ==================== HELPERS ====================
   const isVisible = useCallback(
     (id: string) => visibleSections.has(id),
     [visibleSections]
   );
 
-  // ==================== REVEAL ANIMATION CLASSES ====================
   const revealClasses = useCallback(
     (id: string, delay = 0) => {
       const visible = isVisible(id);
-      return `transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
+      const baseClasses = `transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] gpu-accelerate`;
+
+      if (performance.reducedMotion) {
+        return baseClasses;
+      }
+
+      return `${baseClasses} ${
+        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
       }`;
     },
-    [isVisible]
+    [isVisible, performance.reducedMotion]
   );
 
   return (
-    <main className="bg-ivory text-ink overflow-x-hidden">
+    <main className="bg-ivory text-ink overflow-x-hidden contain-content">
 
-      {/* ==================== HERO SECTION WITH VIDEO ==================== */}
+      {/* ==================== HERO SECTION ==================== */}
       <section
         ref={heroRef}
         className="relative min-h-[85vh] md:min-h-screen flex flex-col items-center justify-center px-6 md:px-10 overflow-hidden"
       >
-        {/* Background Video */}
         <video
           autoPlay
           loop
@@ -480,20 +500,15 @@ export default function Home() {
           <source src="/hero-video.mp4" type="video/mp4" />
         </video>
 
-        {/* Fallback gradient */}
         <div
           className={`absolute inset-0 bg-gradient-to-br from-ivory via-bone to-ivory transition-opacity duration-[1500ms] ${
             videoLoaded ? "opacity-0" : "opacity-100"
           }`}
         />
 
-        {/* Dark overlay */}
         <div className="absolute inset-0 bg-ink/40" />
-
-        {/* Subtle gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-ink/30 via-transparent to-ivory/60" />
 
-        {/* Dot pattern */}
         <div
           className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay"
           style={{
@@ -502,12 +517,8 @@ export default function Home() {
           }}
         />
 
-        {/* HERO CONTENT */}
         <div className="relative z-10 text-center max-w-[1600px] mx-auto w-full">
-
-          <div
-            className="mb-8 md:mb-12 opacity-0 animate-[fadeIn_1.2s_ease-out_0.2s_both]"
-          >
+          <div className="mb-8 md:mb-12 opacity-0 animate-[fadeIn_1.2s_ease-out_0.2s_both] gpu-accelerate">
             <p className="text-[10px] uppercase tracking-[0.4em] text-ivory/80 flex items-center justify-center gap-3 font-body">
               <span className="w-8 h-px bg-ivory/60" />
               New Season 2026
@@ -515,7 +526,7 @@ export default function Home() {
             </p>
           </div>
 
-          <h1 className="display-hero mb-8 md:mb-12 text-ivory drop-shadow-lg">
+          <h1 className="display-hero mb-8 md:mb-12 text-ivory drop-shadow-lg gpu-accelerate">
             <span className="block opacity-0 animate-[revealUp_1.2s_ease-out_0.4s_both]">
               Style.
             </span>
@@ -524,14 +535,14 @@ export default function Home() {
             </span>
           </h1>
 
-          <div className="max-w-xl mx-auto mb-10 md:mb-14 opacity-0 animate-[revealUp_1.2s_ease-out_0.8s_both]">
+          <div className="max-w-xl mx-auto mb-10 md:mb-14 opacity-0 animate-[revealUp_1.2s_ease-out_0.8s_both] gpu-accelerate">
             <p className="text-ivory/90 text-sm md:text-base leading-relaxed font-body drop-shadow-md">
               A curated world of premium clothing, signature fragrances, and
               artisan-crafted bags — designed for the discerning.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center opacity-0 animate-[revealUp_1.2s_ease-out_1s_both]">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center opacity-0 animate-[revealUp_1.2s_ease-out_1s_both] gpu-accelerate">
             <Link
               href="/shop"
               className="group inline-flex items-center justify-center gap-2 px-10 py-5 bg-ivory text-ink text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ink hover:text-ivory transition-all duration-500 min-w-[220px] rounded-full"
@@ -549,10 +560,8 @@ export default function Home() {
               Our Story
             </Link>
           </div>
-
         </div>
 
-        {/* Scroll Indicator */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 opacity-0 animate-[fadeIn_2s_ease-out_1.5s_both] z-10">
           <span className="text-[9px] uppercase tracking-[0.4em] text-ivory/70 font-body">
             Scroll
@@ -562,12 +571,11 @@ export default function Home() {
             strokeWidth={1.5}
           />
         </div>
-
       </section>
 
-      {/* ==================== MARQUEE — CATEGORIES ==================== */}
-      <section className="py-5 md:py-7 border-y border-ink/10 overflow-hidden bg-ink text-ivory">
-        <div className="flex animate-[marquee_50s_linear_infinite] whitespace-nowrap hover:[animation-play-state:paused]">
+      {/* ==================== MARQUEE ==================== */}
+      <section className="py-5 md:py-7 border-y border-ink/10 overflow-hidden bg-ink text-ivory contain-strict">
+        <div className="flex animate-[marquee_50s_linear_infinite] whitespace-nowrap hover:[animation-play-state:paused] gpu-accelerate">
           {[...Array(2)].map((_, i) => (
             <div key={i} className="flex shrink-0 items-center">
               {MARQUEE_ITEMS.map((text, j) => (
@@ -589,14 +597,16 @@ export default function Home() {
         data-section-id="trust"
       >
         <div className="max-w-[1400px] mx-auto">
-          <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 ${revealClasses("trust")}`}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             {TRUST_BADGES.map((badge, i) => {
               const IconComponent = badge.icon;
               return (
                 <div
                   key={i}
-                  className="flex items-center gap-4 justify-center md:justify-start group"
-                  style={{ transitionDelay: `${i * 100}ms` }}
+                  className={`flex items-center gap-4 justify-center md:justify-start group gpu-accelerate ${revealClasses(
+                    "trust",
+                    i * 100
+                  )}`}
                 >
                   <div className="w-11 h-11 bg-bone rounded-full flex items-center justify-center shrink-0 group-hover:bg-ink group-hover:text-white transition-colors duration-500">
                     <IconComponent className="w-4.5 h-4.5" strokeWidth={1.7} />
@@ -616,33 +626,50 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ==================== PHILOSOPHY SECTION ==================== */}
+      {/* ==================== PHILOSOPHY ==================== */}
       <section
-        className="py-20 md:py-32 px-4 md:px-8"
+        className="py-20 md:py-32 px-4 md:px-8 contain-layout"
         data-section-id="philosophy"
       >
         <div className="max-w-[1400px] mx-auto">
           <div className="grid md:grid-cols-12 gap-10 md:gap-6">
             <div className="md:col-span-3">
-              <p className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body ${revealClasses("philosophy")}`}>
+              <p
+                className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body ${revealClasses(
+                  "philosophy"
+                )}`}
+              >
                 01 — Philosophy
               </p>
             </div>
 
             <div className="md:col-span-9">
               <h2
-                className={`display-xl mb-10 md:mb-14 ${revealClasses("philosophy", 100)}`}
+                className={`display-xl mb-10 md:mb-14 ${revealClasses(
+                  "philosophy",
+                  100
+                )}`}
               >
                 The art of{" "}
                 <em className="font-display italic">restraint.</em>
               </h2>
 
               <div className="grid md:grid-cols-2 gap-10 md:gap-20 max-w-5xl">
-                <p className={`text-ink/60 text-base md:text-lg leading-relaxed font-body ${revealClasses("philosophy", 200)}`}>
+                <p
+                  className={`text-ink/60 text-base md:text-lg leading-relaxed font-body ${revealClasses(
+                    "philosophy",
+                    200
+                  )}`}
+                >
                   We believe true luxury is quiet. It doesn't shout, it doesn't
                   chase trends — it simply exists, with intention.
                 </p>
-                <p className={`text-ink/60 text-base md:text-lg leading-relaxed font-body ${revealClasses("philosophy", 300)}`}>
+                <p
+                  className={`text-ink/60 text-base md:text-lg leading-relaxed font-body ${revealClasses(
+                    "philosophy",
+                    300
+                  )}`}
+                >
                   Every piece we create is a meditation on form, function, and
                   feeling. Designed to outlive seasons. Made to be lived in.
                 </p>
@@ -652,25 +679,34 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ==================== CATEGORIES GRID — SYNCED ==================== */}
+      {/* ==================== CATEGORIES ==================== */}
       <section
-        className="pb-20 md:pb-32 px-4 md:px-8"
+        className="pb-20 md:pb-32 px-4 md:px-8 contain-layout"
         data-section-id="categories"
       >
         <div className="max-w-[1400px] mx-auto">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 md:mb-16">
             <div>
-              <p className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body mb-4 ${revealClasses("categories")}`}>
+              <p
+                className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body mb-4 ${revealClasses(
+                  "categories"
+                )}`}
+              >
                 02 — Collections
               </p>
-              <h2 className={`display-lg ${revealClasses("categories", 100)}`}>
+              <h2
+                className={`display-lg ${revealClasses("categories", 100)}`}
+              >
                 Four worlds,{" "}
                 <em className="font-display italic">one vision.</em>
               </h2>
             </div>
             <Link
               href="/shop"
-              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses("categories", 200)}`}
+              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
+                "categories",
+                200
+              )}`}
             >
               View All Collections
               <ArrowRight
@@ -685,14 +721,17 @@ export default function Home() {
               <Link
                 key={cat.slug}
                 href={`/shop?category=${cat.slug}`}
-                className={`group block ${revealClasses("categories", 300 + idx * 100)}`}
+                className={`group block gpu-accelerate ${revealClasses(
+                  "categories",
+                  300 + idx * 100
+                )}`}
               >
-                <div className="relative aspect-[3/4] bg-bone rounded-lg overflow-hidden mb-4">
+                <div className="relative aspect-[3/4] bg-bone rounded-lg overflow-hidden mb-4 contain-strict">
                   <img
                     src={cat.image}
                     alt={cat.name}
                     loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)] gpu-accelerate"
                   />
 
                   <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/20 transition-all duration-700" />
@@ -725,13 +764,15 @@ export default function Home() {
 
       {/* ==================== NEW ARRIVALS ==================== */}
       <section
-        className="pb-20 md:pb-32 px-4 md:px-8 bg-bone/30"
+        className="pb-20 md:pb-32 px-4 md:px-8 bg-bone/30 contain-layout"
         data-section-id="new"
       >
         <div className="max-w-[1400px] mx-auto pt-16 md:pt-24">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 md:mb-14">
             <div>
-              <div className={`flex items-center gap-2 mb-4 ${revealClasses("new")}`}>
+              <div
+                className={`flex items-center gap-2 mb-4 ${revealClasses("new")}`}
+              >
                 <Sparkles className="w-3.5 h-3.5 text-ink" strokeWidth={2} />
                 <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body">
                   03 — Just In
@@ -743,7 +784,10 @@ export default function Home() {
             </div>
             <Link
               href="/shop?sort=newest"
-              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses("new", 200)}`}
+              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
+                "new",
+                200
+              )}`}
             >
               View All New
               <ArrowRight
@@ -757,7 +801,10 @@ export default function Home() {
             {loadingNew ? (
               <ProductGridSkeleton />
             ) : newArrivals.length === 0 ? (
-              <EmptyState title="Coming soon..." subtitle="New arrivals will appear here" />
+              <EmptyState
+                title="Coming soon..."
+                subtitle="New arrivals will appear here"
+              />
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
                 {newArrivals.map((product) => (
@@ -769,15 +816,19 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ==================== FEATURED PRODUCTS ==================== */}
+      {/* ==================== FEATURED ==================== */}
       <section
-        className="py-20 md:py-32 px-4 md:px-8"
+        className="py-20 md:py-32 px-4 md:px-8 contain-layout"
         data-section-id="featured"
       >
         <div className="max-w-[1400px] mx-auto">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 md:mb-14">
             <div>
-              <div className={`flex items-center gap-2 mb-4 ${revealClasses("featured")}`}>
+              <div
+                className={`flex items-center gap-2 mb-4 ${revealClasses(
+                  "featured"
+                )}`}
+              >
                 <Star className="w-3.5 h-3.5 text-ink" strokeWidth={2} />
                 <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body">
                   04 — Featured
@@ -789,7 +840,10 @@ export default function Home() {
             </div>
             <Link
               href="/shop"
-              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses("featured", 200)}`}
+              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
+                "featured",
+                200
+              )}`}
             >
               View All Products
               <ArrowRight
@@ -820,13 +874,17 @@ export default function Home() {
 
       {/* ==================== BEST SELLERS ==================== */}
       <section
-        className="pb-20 md:pb-32 px-4 md:px-8 bg-bone/30"
+        className="pb-20 md:pb-32 px-4 md:px-8 bg-bone/30 contain-layout"
         data-section-id="best"
       >
         <div className="max-w-[1400px] mx-auto pt-16 md:pt-24">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 md:mb-14">
             <div>
-              <div className={`flex items-center gap-2 mb-4 ${revealClasses("best")}`}>
+              <div
+                className={`flex items-center gap-2 mb-4 ${revealClasses(
+                  "best"
+                )}`}
+              >
                 <span className="w-3.5 h-3.5 text-ink text-sm flex items-center justify-center">
                   ↗
                 </span>
@@ -840,7 +898,10 @@ export default function Home() {
             </div>
             <Link
               href="/shop?sort=price-desc"
-              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses("best", 200)}`}
+              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
+                "best",
+                200
+              )}`}
             >
               Shop Bestsellers
               <ArrowRight
@@ -871,12 +932,16 @@ export default function Home() {
 
       {/* ==================== BRAND STORY ==================== */}
       <section
-        className="py-24 md:py-40 px-4 md:px-8 bg-ink text-ivory relative overflow-hidden"
+        className="py-24 md:py-40 px-4 md:px-8 bg-ink text-ivory relative overflow-hidden contain-strict"
         data-section-id="story"
       >
         <div className="max-w-[1400px] mx-auto relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <p className={`text-[10px] uppercase tracking-[0.4em] text-ivory/60 font-body mb-8 ${revealClasses("story")}`}>
+            <p
+              className={`text-[10px] uppercase tracking-[0.4em] text-ivory/60 font-body mb-8 ${revealClasses(
+                "story"
+              )}`}
+            >
               06 — Our Promise
             </p>
 
@@ -885,7 +950,12 @@ export default function Home() {
               <em className="font-display italic">a promise.</em>
             </h2>
 
-            <p className={`text-ivory/60 text-base md:text-lg leading-relaxed font-body max-w-2xl mx-auto mb-12 ${revealClasses("story", 200)}`}>
+            <p
+              className={`text-ivory/60 text-base md:text-lg leading-relaxed font-body max-w-2xl mx-auto mb-12 ${revealClasses(
+                "story",
+                200
+              )}`}
+            >
               From the loom to your wardrobe, every ZAEM piece carries the
               weight of intention. We work with artisans who share our
               obsession with detail. We choose materials that honor both the
@@ -894,7 +964,10 @@ export default function Home() {
 
             <Link
               href="/about"
-              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-70 transition-opacity ${revealClasses("story", 300)}`}
+              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-70 transition-opacity ${revealClasses(
+                "story",
+                300
+              )}`}
             >
               Read Our Story
               <ArrowRight
@@ -906,84 +979,47 @@ export default function Home() {
         </div>
 
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-display text-[25vw] text-ivory/[0.03] whitespace-nowrap select-none pointer-events-none italic"
+          className="absolute top-1/2 left-1/2 font-display text-[25vw] text-ivory/[0.03] whitespace-nowrap select-none pointer-events-none italic gpu-accelerate"
           style={{
-            transform: `translate(-50%, -50%) translateY(${Math.max(0, (scrollY - 2000) * 0.1)}px)`,
+            transform: `translate(-50%, -50%) translate3d(0, ${Math.max(
+              0,
+              (scrollY - 2400) * 0.08
+            )}px, 0)`,
           }}
         >
           ZAEM
         </div>
       </section>
 
-      {/* ==================== TESTIMONIALS ==================== */}
+      {/* ==================== INSTAGRAM ==================== */}
       <section
-        className="py-20 md:py-32 px-4 md:px-8"
-        data-section-id="testimonials"
-      >
-        <div className="max-w-[1400px] mx-auto">
-          <div className="text-center mb-12 md:mb-20">
-            <p className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body mb-4 ${revealClasses("testimonials")}`}>
-              07 — Testimonials
-            </p>
-            <h2 className={`display-lg ${revealClasses("testimonials", 100)}`}>
-              Words from our{" "}
-              <em className="font-display italic">customers.</em>
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 md:gap-8">
-            {TESTIMONIALS.map((testimonial, i) => (
-              <div
-                key={i}
-                className={`p-6 md:p-8 bg-white border border-ink/10 rounded-xl relative hover:border-ink/30 hover:shadow-md transition-all duration-500 ${revealClasses("testimonials", 200 + i * 100)}`}
-              >
-                <span className="text-4xl text-ink/20 mb-4 font-display italic leading-none block">
-                  &ldquo;
-                </span>
-                <p className="text-ink/70 text-sm md:text-base font-body leading-relaxed mb-6 italic">
-                  {testimonial.quote}
-                </p>
-                <div className="flex items-center gap-1 mb-3">
-                  {[...Array(testimonial.rating)].map((_, j) => (
-                    <Star
-                      key={j}
-                      className="w-3 h-3 fill-ink text-ink"
-                      strokeWidth={1.5}
-                    />
-                  ))}
-                </div>
-                <p className="text-[10px] uppercase tracking-[0.2em] font-body font-medium">
-                  {testimonial.author}
-                </p>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-ink/50 font-body mt-0.5">
-                  {testimonial.location}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ==================== INSTAGRAM / SOCIAL ==================== */}
-      <section
-        className="py-16 md:py-24 px-4 md:px-8 bg-bone/30"
+        className="py-16 md:py-24 px-4 md:px-8 bg-bone/30 contain-layout"
         data-section-id="instagram"
       >
         <div className="max-w-[1400px] mx-auto">
           <div className="text-center mb-10 md:mb-14">
-            <div className={`flex items-center justify-center gap-2 mb-4 ${revealClasses("instagram")}`}>
+            <div
+              className={`flex items-center justify-center gap-2 mb-4 ${revealClasses(
+                "instagram"
+              )}`}
+            >
               <span className="w-4 h-4 text-ink text-sm flex items-center justify-center">
                 📸
               </span>
               <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body">
-                08 — Follow Us
+                07 — Follow Us
               </p>
             </div>
             <h2 className={`display-lg mb-4 ${revealClasses("instagram", 100)}`}>
               @zaemstore on{" "}
               <em className="font-display italic">Instagram</em>
             </h2>
-            <p className={`text-ink/50 text-sm font-body ${revealClasses("instagram", 200)}`}>
+            <p
+              className={`text-ink/50 text-sm font-body ${revealClasses(
+                "instagram",
+                200
+              )}`}
+            >
               Tag us in your ZAEM looks to be featured
             </p>
           </div>
@@ -995,13 +1031,16 @@ export default function Home() {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`group relative aspect-square bg-bone rounded-lg overflow-hidden ${revealClasses("instagram", 300 + i * 100)}`}
+                className={`group relative aspect-square bg-bone rounded-lg overflow-hidden contain-strict gpu-accelerate ${revealClasses(
+                  "instagram",
+                  300 + i * 100
+                )}`}
               >
                 <img
                   src={cat.image}
                   alt={cat.name}
                   loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)] gpu-accelerate"
                 />
                 <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/40 transition-all duration-500 flex items-center justify-center">
                   <span className="text-white text-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
@@ -1016,20 +1055,34 @@ export default function Home() {
 
       {/* ==================== NEWSLETTER ==================== */}
       <section
-        className="py-20 md:py-32 px-4 md:px-8"
+        className="py-20 md:py-32 px-4 md:px-8 contain-layout"
         data-section-id="newsletter"
       >
         <div className="max-w-[1400px] mx-auto">
           <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
             <div>
-              <p className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body mb-6 ${revealClasses("newsletter")}`}>
-                09 — Newsletter
+              <p
+                className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body mb-6 ${revealClasses(
+                  "newsletter"
+                )}`}
+              >
+                08 — Newsletter
               </p>
-              <h2 className={`display-lg mb-6 ${revealClasses("newsletter", 100)}`}>
+              <h2
+                className={`display-lg mb-6 ${revealClasses(
+                  "newsletter",
+                  100
+                )}`}
+              >
                 Join the{" "}
                 <em className="font-display italic">inner circle.</em>
               </h2>
-              <p className={`text-ink/60 text-base font-body max-w-md ${revealClasses("newsletter", 200)}`}>
+              <p
+                className={`text-ink/60 text-base font-body max-w-md ${revealClasses(
+                  "newsletter",
+                  200
+                )}`}
+              >
                 Be the first to discover new collections, private sales, and
                 stories from the atelier.
               </p>
