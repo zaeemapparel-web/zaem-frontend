@@ -53,14 +53,17 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-overflow-scrolling: touch;
 }
 
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  -webkit-tap-highlight-color: transparent;
   text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
 }
 
 body {
@@ -70,6 +73,7 @@ body {
   font-weight: 400;
   line-height: 1.6;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
   transition: background-color 0.5s var(--ease-luxury),
     color 0.5s var(--ease-luxury);
 }
@@ -273,12 +277,16 @@ body {
   100% { transform: translateX(200%); }
 }
 
+@keyframes loadingBar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
 @keyframes skeletonPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
 
-/* NEW — Next Level Animations */
 @keyframes slideInLeft {
   from { opacity: 0; transform: translateX(-50px); }
   to { opacity: 1; transform: translateX(0); }
@@ -287,6 +295,16 @@ body {
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(50px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 @keyframes zoomIn {
@@ -318,6 +336,53 @@ body {
     box-shadow: 0 0 30px rgba(201, 169, 97, 0.5),
                 0 0 60px rgba(201, 169, 97, 0.2);
   }
+}
+
+/* Chatbot animations */
+@keyframes msgInRight {
+  from { opacity: 0; transform: translateX(20px) scale(0.96); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes msgInLeft {
+  from { opacity: 0; transform: translateX(-20px) scale(0.96); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes windowPop {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes overlayFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes typingWave {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+
+@keyframes tickSlide {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes voicePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+@keyframes imagePreviewPop {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes sendReady {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
 }
 
 /* ============================================================
@@ -481,13 +546,17 @@ body {
 }
 
 /* ============================================================
-   FOCUS STATES
+   FOCUS STATES (A11Y)
    ============================================================ */
 
 *:focus-visible {
-  outline: 2px solid var(--color-gold);
+  outline: 2px solid var(--color-ink);
   outline-offset: 3px;
   border-radius: 2px;
+}
+
+.dark *:focus-visible {
+  outline-color: var(--color-ivory);
 }
 
 /* ============================================================
@@ -518,14 +587,8 @@ main {
   color: transparent;
 }
 
-/* Shimmer Text — Next Level */
 .text-shimmer {
-  background: linear-gradient(
-    90deg,
-    #0A0A0A 0%,
-    #C9A961 50%,
-    #0A0A0A 100%
-  );
+  background: linear-gradient(90deg, #0A0A0A 0%, #C9A961 50%, #0A0A0A 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -534,12 +597,7 @@ main {
 }
 
 .dark .text-shimmer {
-  background: linear-gradient(
-    90deg,
-    #FAF8F4 0%,
-    #C9A961 50%,
-    #FAF8F4 100%
-  );
+  background: linear-gradient(90deg, #FAF8F4 0%, #C9A961 50%, #FAF8F4 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -564,7 +622,6 @@ main {
   z-index: -1;
 }
 
-/* Glow Pulse — Next Level */
 .glow-pulse {
   animation: glowPulse 3s ease-in-out infinite;
 }
@@ -585,28 +642,18 @@ main {
 }
 
 /* ============================================================
-   LAZY IMAGE LOADING — MOVED HERE (FIXED)
+   IMAGES
    ============================================================ */
 
 img {
   content-visibility: auto;
-}
-
-img[loading="lazy"] {
-  opacity: 0;
   transition: opacity 0.6s var(--ease-smooth);
-}
-
-img[loading="lazy"][src] {
-  opacity: 1;
-}
-
-img {
-  transition: opacity 0.6s var(--ease-smooth);
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* ============================================================
-   NEXT LEVEL — CUSTOM CURSOR (DESKTOP)
+   CUSTOM CURSOR (DESKTOP ONLY)
    ============================================================ */
 
 @media (hover: hover) and (pointer: fine) {
@@ -656,7 +703,7 @@ img {
 }
 
 /* ============================================================
-   NEXT LEVEL — TEXT REVEAL ANIMATIONS
+   TEXT REVEAL ANIMATIONS
    ============================================================ */
 
 .reveal-on-scroll {
@@ -692,7 +739,7 @@ img {
 }
 
 /* ============================================================
-   NEXT LEVEL — MAGNETIC BUTTON
+   MAGNETIC BUTTON
    ============================================================ */
 
 .magnetic {
@@ -702,7 +749,7 @@ img {
 }
 
 /* ============================================================
-   NEXT LEVEL — GRADIENT BORDERS
+   GRADIENT BORDERS
    ============================================================ */
 
 .border-gradient-gold {
@@ -717,7 +764,7 @@ img {
 }
 
 /* ============================================================
-   NEXT LEVEL — NOISE TEXTURE
+   NOISE TEXTURE
    ============================================================ */
 
 .noise-bg {
@@ -735,27 +782,16 @@ img {
 }
 
 /* ============================================================
-   NEXT LEVEL — ASPECT RATIO HELPERS
+   ASPECT RATIO HELPERS
    ============================================================ */
 
-.aspect-3-4 {
-  aspect-ratio: 3 / 4;
-}
-
-.aspect-4-5 {
-  aspect-ratio: 4 / 5;
-}
-
-.aspect-16-9 {
-  aspect-ratio: 16 / 9;
-}
-
-.aspect-square {
-  aspect-ratio: 1 / 1;
-}
+.aspect-3-4 { aspect-ratio: 3 / 4; }
+.aspect-4-5 { aspect-ratio: 4 / 5; }
+.aspect-16-9 { aspect-ratio: 16 / 9; }
+.aspect-square { aspect-ratio: 1 / 1; }
 
 /* ============================================================
-   NEXT LEVEL — LINE CLAMP
+   LINE CLAMP
    ============================================================ */
 
 .line-clamp-1 {
@@ -780,7 +816,7 @@ img {
 }
 
 /* ============================================================
-   NEXT LEVEL — MARQUEE CONTAINER
+   MARQUEE CONTAINER
    ============================================================ */
 
 .marquee-container {
@@ -799,7 +835,7 @@ img {
 }
 
 /* ============================================================
-   NEXT LEVEL — PARALLAX HELPERS
+   PARALLAX HELPERS
    ============================================================ */
 
 .parallax-slow {
@@ -808,7 +844,192 @@ img {
 }
 
 /* ============================================================
-   MOBILE OPTIMIZATIONS
+   PERFORMANCE UTILITIES
+   ============================================================ */
+
+.gpu-accelerate {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  perspective: 1000px;
+}
+
+.contain-layout {
+  contain: layout style;
+}
+
+.contain-strict {
+  contain: strict;
+}
+
+.contain-content {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+
+.battery-saver *,
+.battery-saver *::before,
+.battery-saver *::after {
+  animation-duration: 0.5s !important;
+  transition-duration: 0.15s !important;
+}
+
+/* ============================================================
+   CHATBOT ANIMATIONS
+   ============================================================ */
+
+.msg-in-right {
+  animation: msgInRight 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  will-change: transform, opacity;
+}
+
+.msg-in-left {
+  animation: msgInLeft 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  will-change: transform, opacity;
+}
+
+.chat-window-pop {
+  animation: windowPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  will-change: transform, opacity;
+}
+
+.chat-overlay-fade {
+  animation: overlayFade 0.25s ease-out both;
+}
+
+.chat-status-pulse {
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(74, 222, 128, 0); }
+}
+
+.typing-wave span:nth-child(1) {
+  animation: typingWave 1.4s ease-in-out infinite;
+}
+.typing-wave span:nth-child(2) {
+  animation: typingWave 1.4s ease-in-out 0.15s infinite;
+}
+.typing-wave span:nth-child(3) {
+  animation: typingWave 1.4s ease-in-out 0.3s infinite;
+}
+
+.bubble-hover {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s ease;
+}
+
+.bubble-hover:hover {
+  transform: translateY(-1px) scale(1.005);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.tick-slide {
+  animation: tickSlide 0.3s ease-out both;
+}
+
+.tick-anim {
+  transition: color 0.3s ease;
+}
+
+.voice-pulse {
+  animation: voicePulse 1.5s ease-in-out infinite;
+}
+
+.image-preview-pop {
+  animation: imagePreviewPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.input-focus-glow {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.input-focus-glow:focus-within {
+  box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.15);
+}
+
+.send-ready {
+  animation: sendReady 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.smooth-textarea {
+  transition: height 0.15s ease-out;
+  will-change: height;
+}
+
+/* Chatbot scroll */
+.chatbot-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chatbot-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chatbot-scroll::-webkit-scrollbar-thumb {
+  background: rgba(10, 10, 10, 0.12);
+  border-radius: 4px;
+}
+
+.chatbot-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(10, 10, 10, 0.24);
+}
+
+.chatbot-scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.cart-drawer-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================================
+   PRODUCT PAGE COMPACT
+   ============================================================ */
+
+@media (max-width: 767px) {
+  .product-image-compact {
+    max-height: 420px;
+  }
+}
+
+@media (min-width: 768px) {
+  .product-image-compact {
+    max-height: 550px;
+  }
+}
+
+/* ============================================================
+   CUSTOM UTILITIES
+   ============================================================ */
+
+.h-13 {
+  height: 3.25rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* ============================================================
+   MOBILE OPTIMIZATIONS (SAFE VERSION — NO GLOBAL a TAG)
    ============================================================ */
 
 @media (hover: none) {
@@ -831,37 +1052,25 @@ img {
   }
 }
 
-@media (max-width: 767px) {
+/* Tap targets — buttons only (NOT links) */
+@media (max-width: 768px) {
   button,
-  a {
+  [role="button"] {
     min-height: 44px;
+    min-width: 44px;
   }
-}
 
-@supports (-webkit-touch-callout: none) {
+  /* Prevent zoom on input focus */
   input,
   textarea,
   select {
     font-size: 16px;
   }
-}
 
-* {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ============================================================
-   ACCESSIBILITY
-   ============================================================ */
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  /* Better touch feedback */
+  button:active,
+  a:active {
+    transform: scale(0.97);
   }
 }
 
@@ -880,697 +1089,7 @@ img {
 }
 
 /* ============================================================
-   PRINT STYLES (Invoices)
-   ============================================================ */
-
-@media print {
-  .no-print {
-    display: none !important;
-  }
-
-  body {
-    background: white;
-    color: black;
-  }
-}
-/* ============================================================
-   PRODUCT PAGE COMPACT — ZAEM
-   ============================================================ */
-
-@media (max-width: 767px) {
-  .product-image-compact {
-    max-height: 420px;
-  }
-}
-
-@media (min-width: 768px) {
-  .product-image-compact {
-    max-height: 550px;
-  }
-}
-
-/* Cart drawer smooth scroll */
-.cart-drawer-scroll {
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* h-13 utility (custom) */
-.h-13 {
-  height: 3.25rem;
-}
-/* ============================================================
-   AI CHATBOT — ANIMATIONS
-   ============================================================ */
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulseRing {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
-}
-
-/* Chatbot scrollbar */
-.chatbot-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.chatbot-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.chatbot-scroll::-webkit-scrollbar-thumb {
-  background: rgba(10, 10, 10, 0.15);
-  border-radius: 4px;
-}
-/* ============================================================
-   AI CHATBOT — WHATSAPP-LIKE
-   ============================================================ */
-
-@keyframes msgIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes typing {
-  0%, 60%, 100% {
-    transform: translateY(0);
-    opacity: 0.5;
-  }
-  30% {
-    transform: translateY(-4px);
-    opacity: 1;
-  }
-}
-
-/* Chatbot scrollbar (WhatsApp style) */
-.chatbot-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.chatbot-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.chatbot-scroll::-webkit-scrollbar-thumb {
-  background: rgba(10, 10, 10, 0.15);
-  border-radius: 3px;
-}
-
-.chatbot-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(10, 10, 10, 0.25);
-}
-/* ============================================================
-   AI FEATURES — ANIMATIONS
-   ============================================================ */
-
-@keyframes modalIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes confidenceFill {
-  from { width: 0%; }
-  to { width: var(--confidence); }
-}
-/* ============================================================
-   AI CHATBOT — PRO SMOOTHNESS & ANIMATIONS
-   ============================================================ */
-
-/* Message slide-in animations — Telegram-style */
-@keyframes msgInRight {
-  from {
-    opacity: 0;
-    transform: translateX(20px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-@keyframes msgInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-20px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-.msg-in-right {
-  animation: msgInRight 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  will-change: transform, opacity;
-}
-
-.msg-in-left {
-  animation: msgInLeft 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  will-change: transform, opacity;
-}
-
-/* Window pop-in */
-@keyframes windowPop {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.chat-window-pop {
-  animation: windowPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  will-change: transform, opacity;
-}
-
-/* Overlay fade */
-@keyframes overlayFade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.chat-overlay-fade {
-  animation: overlayFade 0.25s ease-out both;
-}
-
-/* Floating button — subtle float */
-@keyframes fabFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-.chat-fab-float {
-  animation: fabFloat 3s ease-in-out infinite;
-}
-
-/* Status dot pulse */
-@keyframes statusPulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 4px rgba(74, 222, 128, 0);
-  }
-}
-
-.chat-status-pulse {
-  animation: statusPulse 2s ease-in-out infinite;
-}
-
-/* Notification bounce */
-@keyframes notifBounce {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-}
-
-.chat-notif-bounce {
-  animation: notifBounce 1.5s ease-in-out infinite;
-}
-
-/* Typing wave */
-@keyframes typingWave {
-  0%, 60%, 100% {
-    transform: translateY(0);
-    opacity: 0.4;
-  }
-  30% {
-    transform: translateY(-5px);
-    opacity: 1;
-  }
-}
-
-.typing-wave span:nth-child(1) {
-  animation: typingWave 1.4s ease-in-out infinite;
-}
-.typing-wave span:nth-child(2) {
-  animation: typingWave 1.4s ease-in-out 0.15s infinite;
-}
-.typing-wave span:nth-child(3) {
-  animation: typingWave 1.4s ease-in-out 0.3s infinite;
-}
-
-/* Bubble hover — subtle lift */
-.bubble-hover {
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.2s ease;
-}
-
-.bubble-hover:hover {
-  transform: translateY(-1px) scale(1.005);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-/* Tick animation */
-@keyframes tickSlide {
-  from {
-    opacity: 0;
-    transform: translateX(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.tick-slide {
-  animation: tickSlide 0.3s ease-out both;
-}
-
-.tick-anim {
-  transition: color 0.3s ease;
-}
-
-/* Voice pulse */
-@keyframes voicePulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
-  }
-}
-
-.voice-pulse {
-  animation: voicePulse 1.5s ease-in-out infinite;
-}
-
-/* Smooth scroll container */
-.chatbot-scroll-smooth {
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
-
-/* Image preview pop */
-@keyframes imagePreviewPop {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.image-preview-pop {
-  animation: imagePreviewPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-/* Input focus glow */
-.input-focus-glow {
-  transition: box-shadow 0.3s ease, border-color 0.3s ease;
-}
-
-.input-focus-glow:focus-within {
-  box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.15);
-}
-
-/* Send button — ready state */
-@keyframes sendReady {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-  100% { transform: scale(1); }
-}
-
-.send-ready {
-  animation: sendReady 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Smooth textarea */
-.smooth-textarea {
-  transition: height 0.15s ease-out;
-  will-change: height;
-}
-
-/* Chatbot scrollbar — premium */
-.chatbot-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.chatbot-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.chatbot-scroll::-webkit-scrollbar-thumb {
-  background: rgba(10, 10, 10, 0.12);
-  border-radius: 4px;
-  transition: background 0.2s ease;
-}
-
-.chatbot-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(10, 10, 10, 0.24);
-}
-
-/* Hardware acceleration for smooth animations */
-.msg-in-right,
-.msg-in-left,
-.chat-window-pop,
-.chat-fab-float,
-.chat-status-pulse,
-.typing-wave span {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .msg-in-right,
-  .msg-in-left,
-  .chat-window-pop,
-  .chat-fab-float,
-  .chat-status-pulse,
-  .typing-wave span,
-  .voice-pulse,
-  .chat-notif-bounce,
-  .image-preview-pop,
-  .send-ready {
-    animation: none !important;
-  }
-
-  .bubble-hover:hover {
-    transform: none;
-  }
-}
-/* ============================================================
-   PERFORMANCE OPTIMIZATIONS — 60/90/120/144/240 FPS
-   ============================================================ */
-
-/* GPU acceleration for all animated elements */
-.gpu-accelerate {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-font-smoothing: antialiased;
-  perspective: 1000px;
-}
-
-/* Containment for better performance */
-.contain-layout {
-  contain: layout style;
-}
-
-.contain-strict {
-  contain: strict;
-}
-
-.contain-content {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 500px;
-}
-
-/* Frame-perfect animations */
-@keyframes smoothFadeIn {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes smoothRevealUp {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 40px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes smoothSlideIn {
-  from {
-    opacity: 0;
-    transform: translate3d(-20px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-/* High refresh rate optimizations */
-@media (min-resolution: 120dpi) {
-  .smooth-hover {
-    transition-duration: 150ms !important;
-  }
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* Battery saver mode */
-.battery-saver *,
-.battery-saver *::before,
-.battery-saver *::after {
-  animation-duration: 0.5s !important;
-  transition-duration: 0.15s !important;
-}
-
-.battery-saver .heavy-animation {
-  animation: none !important;
-}
-
-/* Prevent layout shift */
-.prevent-shift {
-  transform: translateZ(0);
-  will-change: transform;
-}
-
-/* Smooth scrolling fallback */
-html {
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-}
-
-/* Optimized images */
-img {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Interaction states — instant feedback */
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-/* Prevent overscroll jank */
-body {
-  overscroll-behavior-y: none;
-}
-
-/* High FPS animations */
-.fps-smooth {
-  transform: translate3d(0, 0, 0);
-  will-change: transform, opacity;
-}
-
-.fps-smooth:hover {
-  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* ============================================================
-   END PERFORMANCE OPTIMIZATIONS
-   ============================================================ */
-   /* ============================================================
-   MOBILE-FIRST OPTIMIZATIONS
-   ============================================================ */
-
-/* Minimum 44px tap targets */
-@media (max-width: 768px) {
-  button,
-  a[role="button"],
-  [role="button"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
-  /* Larger tap targets for links */
-  a {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-  }
-
-  /* Prevent zoom on input focus */
-  input,
-  textarea,
-  select {
-    font-size: 16px !important;
-  }
-
-  /* Better touch feedback */
-  button:active,
-  a:active {
-    transform: scale(0.97);
-    transition: transform 100ms ease-out;
-  }
-}
-
-/* Prevent overscroll bounce (mobile) */
-html {
-  overscroll-behavior: none;
-}
-
-body {
-  overscroll-behavior-y: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Smooth momentum scrolling */
-.overflow-y-auto,
-.overflow-x-auto {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Prevent text selection on buttons */
-button,
-a[role="button"] {
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-
-/* Touch manipulation for all interactive */
-.touch-manipulation {
-  touch-action: manipulation;
-}
-
-/* ============================================================
-   INSTANT NAVIGATION SUPPORT
-   ============================================================ */
-
-/* Disable pointer events during navigation */
-body.navigating * {
-  pointer-events: none !important;
-  opacity: 0.7;
-}
-
-/* ============================================================
-   PRELOAD HINTS
-   ============================================================ */
-
-.link-prefetch {
-  pointer-events: auto;
-}
-/* ============================================================
-   ACCESSIBILITY — SKIP TO CONTENT
-   ============================================================ */
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-
-.focus\:not-sr-only:focus {
-  position: fixed;
-  width: auto;
-  height: auto;
-  padding: 1rem;
-  margin: 0;
-  overflow: visible;
-  clip: auto;
-  white-space: normal;
-}
-
-/* ============================================================
-   GPU ACCELERATION
-   ============================================================ */
-
-.gpu-accelerate {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-font-smoothing: antialiased;
-  perspective: 1000px;
-}
-
-/* ============================================================
-   REDUCED MOTION SUPPORT
+   ACCESSIBILITY — REDUCED MOTION
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1586,118 +1105,30 @@ body.navigating * {
   .gpu-accelerate {
     transform: none !important;
   }
-}
 
-/* ============================================================
-   DARK MODE SUPPORT
-   ============================================================ */
-
-.dark ::selection {
-  background: #FAF8F4;
-  color: #0A0A0A;
-}
-
-/* ============================================================
-   TOUCH OPTIMIZATIONS
-   ============================================================ */
-
-button,
-a,
-[role="button"] {
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* Minimum 44px tap targets on mobile */
-@media (max-width: 768px) {
-  button,
-  a[role="button"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
-  input,
-  textarea,
-  select {
-    font-size: 16px !important;
+  .msg-in-right,
+  .msg-in-left,
+  .chat-window-pop,
+  .chat-status-pulse,
+  .typing-wave span,
+  .voice-pulse,
+  .image-preview-pop,
+  .send-ready {
+    animation: none !important;
   }
 }
 
 /* ============================================================
-   SMOOTH SCROLL
+   PRINT STYLES
    ============================================================ */
 
-html {
-  scroll-behavior: smooth;
-  overscroll-behavior: none;
-  -webkit-text-size-adjust: 100%;
-}
+@media print {
+  .no-print {
+    display: none !important;
+  }
 
-body {
-  overscroll-behavior-y: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ============================================================
-   SAFE AREA (iPhone Notch)
-   ============================================================ */
-
-@supports (padding: max(0px)) {
   body {
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-
-  .safe-top {
-    padding-top: max(1rem, env(safe-area-inset-top));
-  }
-
-  .safe-bottom {
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  }
-}
-
-/* ============================================================
-   CONTAINMENT FOR PERFORMANCE
-   ============================================================ */
-
-.contain-layout {
-  contain: layout style;
-}
-
-.contain-strict {
-  contain: strict;
-}
-
-.contain-content {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 500px;
-}
-
-/* ============================================================
-   FOCUS VISIBLE (A11y)
-   ============================================================ */
-
-*:focus-visible {
-  outline: 2px solid #0A0A0A;
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-.dark *:focus-visible {
-  outline-color: #FAF8F4;
-}
-/* ============================================================
-   LOADING BAR ANIMATION
-   ============================================================ */
-
-@keyframes loadingBar {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(400%);
+    background: white;
+    color: black;
   }
 }
