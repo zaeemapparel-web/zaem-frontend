@@ -125,12 +125,14 @@ export default function LoginPage() {
           </form>
 
           {/* Register Link */}
-          <p className="text-center text-sm font-body text-muted mt-10">
-            Don&apos;t have an account?{" "}
-            <Link href="/account/register" className="text-gold hover:text-ink transition-colors link-underline">
-              Create one
-            </Link>
-          </p>
+          <div className="text-center text-sm font-body text-muted mt-10">
+  <Link
+    href="/account/register"
+    className="inline-block text-gold hover:text-ink transition-colors font-medium underline underline-offset-4 py-3 px-4"
+  >
+    Don&apos;t have an account? Create one →
+  </Link>
+</div>
 
         </div>
       </div>
