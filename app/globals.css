@@ -1689,3 +1689,15 @@ body {
 .dark *:focus-visible {
   outline-color: #FAF8F4;
 }
+/* ============================================================
+   LOADING BAR ANIMATION
+   ============================================================ */
+
+@keyframes loadingBar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
