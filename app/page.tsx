@@ -1,17 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useEffect,
   useState,
   useRef,
   useCallback,
-  useMemo,
 } from "react";
 import {
   ArrowDown,
   ArrowRight,
-  ShoppingBag,
   Package,
   Sparkles,
   Star,
@@ -66,15 +65,13 @@ const TRUST_BADGES = [
   { icon: Shield, title: "Secure Payment", desc: "COD, JazzCash, EasyPaisa" },
 ];
 
-// ==================== MARQUEE ITEMS ====================
+// ==================== MARQUEE ====================
 const MARQUEE_ITEMS = ["Woman", "Man", "Fragrances", "Bags", "New In", "Sale"];
 
 // ==================== NEWSLETTER FORM ====================
 function NewsletterForm() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,12 +124,12 @@ function NewsletterForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="your@email.com"
-          className="flex-1 bg-transparent text-ink placeholder:text-ink/40 text-sm font-body outline-none py-3 px-4 sm:px-0 border border-ink/20 sm:border-0 rounded-full sm:rounded-none"
+          className="flex-1 bg-transparent text-ink placeholder:text-ink/40 text-base sm:text-sm font-body outline-none py-3 px-4 sm:px-0 border border-ink/20 sm:border-0 rounded-full sm:rounded-none"
         />
         <button
           type="submit"
           disabled={status === "loading"}
-          className="text-[10px] uppercase tracking-[0.2em] font-body font-medium hover:opacity-60 transition-opacity py-3 px-6 bg-ink text-white sm:bg-transparent sm:text-ink rounded-full sm:rounded-none disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
+          className="text-[10px] uppercase tracking-[0.2em] font-body font-medium hover:opacity-60 transition-opacity py-3 px-6 bg-ink text-white sm:bg-transparent sm:text-ink rounded-full sm:rounded-none disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap min-h-[44px]"
         >
           {status === "loading" ? "..." : "Subscribe"}
           {status !== "loading" && (
@@ -165,8 +162,12 @@ function ProductCard({ product }: { product: any }) {
     : 0;
 
   return (
-    <Link href={`/product/${product.slug}`} className="group block">
-      <div className="relative aspect-[3/4] bg-bone rounded-lg overflow-hidden mb-3">
+    <Link
+      href={`/product/${product.slug}`}
+      prefetch={true}
+      className="group block touch-manipulation"
+    >
+      <div className="relative aspect-[3/4] bg-bone rounded-lg overflow-hidden mb-3 contain-strict gpu-accelerate">
         {product.images?.[0] ? (
           <img
             src={product.images[0]}
@@ -191,18 +192,12 @@ function ProductCard({ product }: { product: any }) {
             Only {product.stock} Left
           </div>
         )}
-
-        <div className="absolute bottom-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 gpu-accelerate">
-          <div className="w-9 h-9 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-ink hover:text-white transition-colors">
-            <Heart className="w-3.5 h-3.5" strokeWidth={2} />
-          </div>
-        </div>
       </div>
 
       <p className="text-[9px] uppercase tracking-widest text-ink/50 font-body mb-1 truncate">
         {product.category?.name || "ZAEM"}
       </p>
-      <h3 className="font-display text-sm md:text-base leading-tight line-clamp-2 mb-1.5 group-hover:text-ink/70 transition-colors gpu-accelerate">
+      <h3 className="font-display text-sm md:text-base leading-tight line-clamp-2 mb-1.5 group-hover:text-ink/70 transition-colors">
         {product.name}
       </h3>
       <div className="flex items-baseline gap-2 flex-wrap">
@@ -236,28 +231,59 @@ function ProductGridSkeleton() {
 }
 
 // ==================== EMPTY STATE ====================
-function EmptyState({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle: string;
-}) {
+function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="text-center py-16 bg-bone/30 rounded-xl">
-      <Package
-        className="w-10 h-10 text-ink/20 mx-auto mb-3"
-        strokeWidth={1.5}
-      />
+      <Package className="w-10 h-10 text-ink/20 mx-auto mb-3" strokeWidth={1.5} />
       <p className="text-ink/50 font-body text-sm mb-1">{title}</p>
       <p className="text-ink/40 font-body text-xs">{subtitle}</p>
     </div>
   );
 }
 
+// ==================== FAST LINK (Instant Navigation) ====================
+function FastLink({
+  href,
+  children,
+  className,
+  onNavigate,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+  onNavigate?: () => void;
+}) {
+  const router = useRouter();
+  const [navigating, setNavigating] = useState(false);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (navigating) return;
+
+    setNavigating(true);
+    onNavigate?.();
+
+    // Instantly navigate — Next.js prefetches the page
+    router.push(href);
+  };
+
+  return (
+    <Link
+      href={href}
+      prefetch={true}
+      onClick={handleClick}
+      className={`touch-manipulation select-none ${className} ${
+        navigating ? "opacity-70" : ""
+      }`}
+      style={{ WebkitTapHighlightColor: "transparent" }}
+    >
+      {children}
+    </Link>
+  );
+}
+
 // ==================== MAIN HOMEPAGE ====================
 export default function Home() {
-  // ==================== STATE ====================
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
   const [newArrivals, setNewArrivals] = useState<any[]>([]);
   const [bestSellers, setBestSellers] = useState<any[]>([]);
@@ -266,68 +292,38 @@ export default function Home() {
   const [loadingBest, setLoadingBest] = useState(true);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [scrollY, setScrollY] = useState(0);
-  const [visibleSections, setVisibleSections] = useState<Set<string>>(
-    new Set()
-  );
-  const [performance, setPerformance] = useState({
-    targetFPS: 60,
-    deviceRefreshRate: 60,
-    isHighRefresh: false,
-    isBatterySaver: false,
-    isLowEnd: false,
-    reducedMotion: false,
-  });
+  const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set());
+  const [isMobile, setIsMobile] = useState(false);
+  const [shopNavigating, setShopNavigating] = useState(false);
 
-  const heroRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // ==================== PERFORMANCE INIT ====================
+  // ==================== MOBILE DETECTION ====================
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    let manager: any = null;
-
-    const init = async () => {
-      try {
-        const module = await import("@/lib/performance");
-        manager = module.performanceManager;
-        if (manager) {
-          manager.init();
-          const unsubscribe = manager.subscribe((profile: any) => {
-            setPerformance(profile);
-
-            // Apply battery saver class
-            if (profile.isBatterySaver) {
-              document.body.classList.add("battery-saver");
-            } else {
-              document.body.classList.remove("battery-saver");
-            }
-          });
-          return unsubscribe;
-        }
-      } catch (e) {
-        console.log("Performance manager not available");
-      }
-    };
-
-    const cleanup = init();
-
-    return () => {
-      cleanup.then((unsub) => unsub && unsub());
-    };
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check, { passive: true });
+    return () => window.removeEventListener("resize", check);
   }, []);
 
-  // ==================== FETCH FEATURED PRODUCTS ====================
+  // ==================== PREFETCH SHOP PAGE ====================
+  useEffect(() => {
+    // Prefetch shop page for instant navigation
+    router.prefetch("/shop");
+    router.prefetch("/account/login");
+  }, [router]);
+
+  // ==================== FETCH FEATURED ====================
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
         const res = await fetch(`${API_URL}/api/products?featured=true&limit=4`);
         const data = await res.json();
-        if (data.success) {
-          setFeaturedProducts(data.data.products || []);
-        }
+        if (data.success) setFeaturedProducts(data.data.products || []);
       } catch (error) {
-        console.error("Featured fetch error:", error);
+        console.error(error);
       } finally {
         setLoadingFeatured(false);
       }
@@ -335,17 +331,15 @@ export default function Home() {
     fetchFeatured();
   }, []);
 
-  // ==================== FETCH NEW ARRIVALS ====================
+  // ==================== FETCH NEW ====================
   useEffect(() => {
     const fetchNew = async () => {
       try {
         const res = await fetch(`${API_URL}/api/products?sort=newest&limit=4`);
         const data = await res.json();
-        if (data.success) {
-          setNewArrivals(data.data.products || []);
-        }
+        if (data.success) setNewArrivals(data.data.products || []);
       } catch (error) {
-        console.error("New arrivals fetch error:", error);
+        console.error(error);
       } finally {
         setLoadingNew(false);
       }
@@ -353,19 +347,15 @@ export default function Home() {
     fetchNew();
   }, []);
 
-  // ==================== FETCH BEST SELLERS ====================
+  // ==================== FETCH BEST ====================
   useEffect(() => {
     const fetchBest = async () => {
       try {
-        const res = await fetch(
-          `${API_URL}/api/products?sort=price-desc&limit=4`
-        );
+        const res = await fetch(`${API_URL}/api/products?sort=price-desc&limit=4`);
         const data = await res.json();
-        if (data.success) {
-          setBestSellers(data.data.products || []);
-        }
+        if (data.success) setBestSellers(data.data.products || []);
       } catch (error) {
-        console.error("Best sellers fetch error:", error);
+        console.error(error);
       } finally {
         setLoadingBest(false);
       }
@@ -373,39 +363,34 @@ export default function Home() {
     fetchBest();
   }, []);
 
-  // ==================== LENIS SMOOTH SCROLL ====================
+  // ==================== LENIS ====================
   useEffect(() => {
     let lenis: any;
-
-    const initLenis = async () => {
+    const init = async () => {
       try {
         const Lenis = (await import("lenis")).default;
         lenis = new Lenis({
-          duration: performance.reducedMotion ? 0 : 1.2,
+          duration: 1.2,
           easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-          smoothWheel: !performance.reducedMotion,
+          smoothWheel: true,
           wheelMultiplier: 1,
           touchMultiplier: 2,
           infinite: false,
         });
-
         function raf(time: number) {
           lenis.raf(time);
           requestAnimationFrame(raf);
         }
         requestAnimationFrame(raf);
-      } catch (e) {
-        console.log("Lenis not available");
-      }
+      } catch (e) {}
     };
-    initLenis();
-
+    init();
     return () => {
       if (lenis) lenis.destroy();
     };
-  }, [performance.reducedMotion]);
+  }, []);
 
-  // ==================== RAF SCROLL TRACKING ====================
+  // ==================== RAF SCROLL ====================
   useEffect(() => {
     let ticking = false;
     let rafId: number | null = null;
@@ -436,27 +421,19 @@ export default function Home() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const id = entry.target.getAttribute("data-section-id");
-            if (id) {
-              setVisibleSections((prev) => new Set(prev).add(id));
-            }
+            if (id) setVisibleSections((prev) => new Set(prev).add(id));
           }
         });
       },
-      {
-        threshold: 0.1,
-        rootMargin: "0px 0px -80px 0px",
-      }
+      { threshold: 0.1, rootMargin: "0px 0px -80px 0px" }
     );
 
     const sections = document.querySelectorAll("[data-section-id]");
-    sections.forEach((section) => observerRef.current?.observe(section));
+    sections.forEach((s) => observerRef.current?.observe(s));
 
-    return () => {
-      observerRef.current?.disconnect();
-    };
+    return () => observerRef.current?.disconnect();
   }, []);
 
-  // ==================== HELPERS ====================
   const isVisible = useCallback(
     (id: string) => visibleSections.has(id),
     [visibleSections]
@@ -465,33 +442,53 @@ export default function Home() {
   const revealClasses = useCallback(
     (id: string, delay = 0) => {
       const visible = isVisible(id);
-      const baseClasses = `transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] gpu-accelerate`;
-
-      if (performance.reducedMotion) {
-        return baseClasses;
-      }
-
-      return `${baseClasses} ${
+      return `transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] gpu-accelerate ${
         visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
       }`;
     },
-    [isVisible, performance.reducedMotion]
+    [isVisible]
+  );
+
+  // ==================== INSTANT SHOP NAVIGATION ====================
+  const handleShopClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (shopNavigating) return;
+      setShopNavigating(true);
+      router.push("/shop");
+    },
+    [router, shopNavigating]
+  );
+
+  const handleAboutClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      router.push("/about");
+    },
+    [router]
+  );
+
+  const handleCategoryClick = useCallback(
+    (slug: string) => (e: React.MouseEvent) => {
+      e.preventDefault();
+      router.push(`/shop?category=${slug}`);
+    },
+    [router]
   );
 
   return (
     <main className="bg-ivory text-ink overflow-x-hidden contain-content">
 
-      {/* ==================== HERO SECTION ==================== */}
-      <section
-        ref={heroRef}
-        className="relative min-h-[85vh] md:min-h-screen flex flex-col items-center justify-center px-6 md:px-10 overflow-hidden"
-      >
+      {/* ==================== HERO ==================== */}
+      <section className="relative min-h-[85vh] md:min-h-screen flex flex-col items-center justify-center px-6 md:px-10 overflow-hidden">
+
+        {/* Video — only on desktop or WiFi */}
         <video
           autoPlay
           loop
           muted
           playsInline
-          preload="auto"
+          preload={isMobile ? "none" : "auto"}
           onLoadedData={() => setVideoLoaded(true)}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1500ms] ${
             videoLoaded ? "opacity-100" : "opacity-0"
@@ -500,33 +497,26 @@ export default function Home() {
           <source src="/hero-video.mp4" type="video/mp4" />
         </video>
 
+        {/* Fallback gradient — always visible on mobile */}
         <div
           className={`absolute inset-0 bg-gradient-to-br from-ivory via-bone to-ivory transition-opacity duration-[1500ms] ${
-            videoLoaded ? "opacity-0" : "opacity-100"
+            videoLoaded && !isMobile ? "opacity-0" : "opacity-100"
           }`}
         />
 
         <div className="absolute inset-0 bg-ink/40" />
         <div className="absolute inset-0 bg-gradient-to-b from-ink/30 via-transparent to-ivory/60" />
 
-        <div
-          className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay"
-          style={{
-            backgroundImage: `radial-gradient(circle, #FAF8F4 1px, transparent 1px)`,
-            backgroundSize: "40px 40px",
-          }}
-        />
-
         <div className="relative z-10 text-center max-w-[1600px] mx-auto w-full">
-          <div className="mb-8 md:mb-12 opacity-0 animate-[fadeIn_1.2s_ease-out_0.2s_both] gpu-accelerate">
-            <p className="text-[10px] uppercase tracking-[0.4em] text-ivory/80 flex items-center justify-center gap-3 font-body">
-              <span className="w-8 h-px bg-ivory/60" />
+          <div className="mb-6 md:mb-12 opacity-0 animate-[fadeIn_1.2s_ease-out_0.2s_both] gpu-accelerate">
+            <p className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] text-ivory/80 flex items-center justify-center gap-3 font-body">
+              <span className="w-6 md:w-8 h-px bg-ivory/60" />
               New Season 2026
-              <span className="w-8 h-px bg-ivory/60" />
+              <span className="w-6 md:w-8 h-px bg-ivory/60" />
             </p>
           </div>
 
-          <h1 className="display-hero mb-8 md:mb-12 text-ivory drop-shadow-lg gpu-accelerate">
+          <h1 className="display-hero mb-6 md:mb-12 text-ivory drop-shadow-lg gpu-accelerate">
             <span className="block opacity-0 animate-[revealUp_1.2s_ease-out_0.4s_both]">
               Style.
             </span>
@@ -535,55 +525,75 @@ export default function Home() {
             </span>
           </h1>
 
-          <div className="max-w-xl mx-auto mb-10 md:mb-14 opacity-0 animate-[revealUp_1.2s_ease-out_0.8s_both] gpu-accelerate">
-            <p className="text-ivory/90 text-sm md:text-base leading-relaxed font-body drop-shadow-md">
+          <div className="max-w-xl mx-auto mb-8 md:mb-14 opacity-0 animate-[revealUp_1.2s_ease-out_0.8s_both] gpu-accelerate">
+            <p className="text-ivory/90 text-sm md:text-base leading-relaxed font-body drop-shadow-md px-4">
               A curated world of premium clothing, signature fragrances, and
               artisan-crafted bags — designed for the discerning.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center opacity-0 animate-[revealUp_1.2s_ease-out_1s_both] gpu-accelerate">
+          {/* BUTTONS — Instant Navigation */}
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-center opacity-0 animate-[revealUp_1.2s_ease-out_1s_both] px-4">
             <Link
               href="/shop"
-              className="group inline-flex items-center justify-center gap-2 px-10 py-5 bg-ivory text-ink text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ink hover:text-ivory transition-all duration-500 min-w-[220px] rounded-full"
+              prefetch={true}
+              onClick={handleShopClick}
+              className={`group inline-flex items-center justify-center gap-2 px-8 md:px-10 py-4 md:py-5 bg-ivory text-ink text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ink hover:text-ivory transition-all duration-300 min-w-[200px] md:min-w-[220px] rounded-full touch-manipulation select-none ${
+                shopNavigating ? "opacity-70 scale-95" : ""
+              }`}
+              style={{ WebkitTapHighlightColor: "transparent" }}
             >
-              Shop the Collection
-              <ArrowRight
-                className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300"
-                strokeWidth={2}
-              />
+              {shopNavigating ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-ink/30 border-t-ink rounded-full animate-spin" />
+                  Opening...
+                </>
+              ) : (
+                <>
+                  Shop the Collection
+                  <ArrowRight
+                    className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300"
+                    strokeWidth={2}
+                  />
+                </>
+              )}
             </Link>
+
             <Link
               href="/about"
-              className="inline-flex items-center justify-center px-10 py-5 border border-ivory/60 text-ivory text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ivory hover:text-ink transition-all duration-500 backdrop-blur-sm min-w-[220px] rounded-full"
+              prefetch={true}
+              onClick={handleAboutClick}
+              className="inline-flex items-center justify-center px-8 md:px-10 py-4 md:py-5 border border-ivory/60 text-ivory text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ivory hover:text-ink transition-all duration-300 backdrop-blur-sm min-w-[200px] md:min-w-[220px] rounded-full touch-manipulation select-none"
+              style={{ WebkitTapHighlightColor: "transparent" }}
             >
               Our Story
             </Link>
           </div>
         </div>
 
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 opacity-0 animate-[fadeIn_2s_ease-out_1.5s_both] z-10">
-          <span className="text-[9px] uppercase tracking-[0.4em] text-ivory/70 font-body">
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 md:gap-3 opacity-0 animate-[fadeIn_2s_ease-out_1.5s_both] z-10">
+          <span className="text-[8px] md:text-[9px] uppercase tracking-[0.4em] text-ivory/70 font-body">
             Scroll
           </span>
           <ArrowDown
-            className="w-4 h-4 text-ivory/70 animate-bounce"
+            className="w-3.5 md:w-4 h-3.5 md:h-4 text-ivory/70 animate-bounce"
             strokeWidth={1.5}
           />
         </div>
       </section>
 
       {/* ==================== MARQUEE ==================== */}
-      <section className="py-5 md:py-7 border-y border-ink/10 overflow-hidden bg-ink text-ivory contain-strict">
+      <section className="py-4 md:py-7 border-y border-ink/10 overflow-hidden bg-ink text-ivory contain-strict">
         <div className="flex animate-[marquee_50s_linear_infinite] whitespace-nowrap hover:[animation-play-state:paused] gpu-accelerate">
           {[...Array(2)].map((_, i) => (
             <div key={i} className="flex shrink-0 items-center">
               {MARQUEE_ITEMS.map((text, j) => (
                 <div key={j} className="flex items-center">
-                  <span className="font-display text-xl md:text-2xl px-6 md:px-10 tracking-tight italic">
+                  <span className="font-display text-lg md:text-2xl px-5 md:px-10 tracking-tight italic">
                     {text}
                   </span>
-                  <span className="text-ivory/40 text-base md:text-lg">✦</span>
+                  <span className="text-ivory/40 text-sm md:text-lg">✦</span>
                 </div>
               ))}
             </div>
@@ -592,32 +602,24 @@ export default function Home() {
       </section>
 
       {/* ==================== TRUST BADGES ==================== */}
-      <section
-        className="py-10 md:py-14 px-4 md:px-8 border-b border-ink/10"
-        data-section-id="trust"
-      >
+      <section className="py-8 md:py-14 px-4 md:px-8 border-b border-ink/10" data-section-id="trust">
         <div className="max-w-[1400px] mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8">
             {TRUST_BADGES.map((badge, i) => {
               const IconComponent = badge.icon;
               return (
                 <div
                   key={i}
-                  className={`flex items-center gap-4 justify-center md:justify-start group gpu-accelerate ${revealClasses(
-                    "trust",
-                    i * 100
-                  )}`}
+                  className={`flex items-center gap-3 md:gap-4 justify-start group gpu-accelerate ${revealClasses("trust", i * 100)}`}
                 >
-                  <div className="w-11 h-11 bg-bone rounded-full flex items-center justify-center shrink-0 group-hover:bg-ink group-hover:text-white transition-colors duration-500">
-                    <IconComponent className="w-4.5 h-4.5" strokeWidth={1.7} />
+                  <div className="w-10 md:w-11 h-10 md:h-11 bg-bone rounded-full flex items-center justify-center shrink-0 group-hover:bg-ink group-hover:text-white transition-colors duration-500">
+                    <IconComponent className="w-4 md:w-4.5 h-4 md:h-4.5" strokeWidth={1.7} />
                   </div>
                   <div>
                     <p className="font-body text-sm font-medium mb-0.5">
                       {badge.title}
                     </p>
-                    <p className="font-body text-xs text-ink/50">
-                      {badge.desc}
-                    </p>
+                    <p className="font-body text-xs text-ink/50">{badge.desc}</p>
                   </div>
                 </div>
               );
@@ -627,51 +629,24 @@ export default function Home() {
       </section>
 
       {/* ==================== PHILOSOPHY ==================== */}
-      <section
-        className="py-20 md:py-32 px-4 md:px-8 contain-layout"
-        data-section-id="philosophy"
-      >
+      <section className="py-16 md:py-32 px-4 md:px-8 contain-layout" data-section-id="philosophy">
         <div className="max-w-[1400px] mx-auto">
-          <div className="grid md:grid-cols-12 gap-10 md:gap-6">
+          <div className="grid md:grid-cols-12 gap-8 md:gap-6">
             <div className="md:col-span-3">
-              <p
-                className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body ${revealClasses(
-                  "philosophy"
-                )}`}
-              >
+              <p className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body ${revealClasses("philosophy")}`}>
                 01 — Philosophy
               </p>
             </div>
-
             <div className="md:col-span-9">
-              <h2
-                className={`display-xl mb-10 md:mb-14 ${revealClasses(
-                  "philosophy",
-                  100
-                )}`}
-              >
-                The art of{" "}
-                <em className="font-display italic">restraint.</em>
+              <h2 className={`display-xl mb-8 md:mb-14 ${revealClasses("philosophy", 100)}`}>
+                The art of <em className="font-display italic">restraint.</em>
               </h2>
-
-              <div className="grid md:grid-cols-2 gap-10 md:gap-20 max-w-5xl">
-                <p
-                  className={`text-ink/60 text-base md:text-lg leading-relaxed font-body ${revealClasses(
-                    "philosophy",
-                    200
-                  )}`}
-                >
-                  We believe true luxury is quiet. It doesn't shout, it doesn't
-                  chase trends — it simply exists, with intention.
+              <div className="grid md:grid-cols-2 gap-8 md:gap-20 max-w-5xl">
+                <p className={`text-ink/60 text-base md:text-lg leading-relaxed font-body ${revealClasses("philosophy", 200)}`}>
+                  We believe true luxury is quiet. It doesn't shout, it doesn't chase trends — it simply exists, with intention.
                 </p>
-                <p
-                  className={`text-ink/60 text-base md:text-lg leading-relaxed font-body ${revealClasses(
-                    "philosophy",
-                    300
-                  )}`}
-                >
-                  Every piece we create is a meditation on form, function, and
-                  feeling. Designed to outlive seasons. Made to be lived in.
+                <p className={`text-ink/60 text-base md:text-lg leading-relaxed font-body ${revealClasses("philosophy", 300)}`}>
+                  Every piece we create is a meditation on form, function, and feeling. Designed to outlive seasons. Made to be lived in.
                 </p>
               </div>
             </div>
@@ -680,39 +655,24 @@ export default function Home() {
       </section>
 
       {/* ==================== CATEGORIES ==================== */}
-      <section
-        className="pb-20 md:pb-32 px-4 md:px-8 contain-layout"
-        data-section-id="categories"
-      >
+      <section className="pb-16 md:pb-32 px-4 md:px-8 contain-layout" data-section-id="categories">
         <div className="max-w-[1400px] mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 md:mb-16">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-6 mb-8 md:mb-16">
             <div>
-              <p
-                className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body mb-4 ${revealClasses(
-                  "categories"
-                )}`}
-              >
+              <p className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body mb-3 md:mb-4 ${revealClasses("categories")}`}>
                 02 — Collections
               </p>
-              <h2
-                className={`display-lg ${revealClasses("categories", 100)}`}
-              >
-                Four worlds,{" "}
-                <em className="font-display italic">one vision.</em>
+              <h2 className={`display-lg ${revealClasses("categories", 100)}`}>
+                Four worlds, <em className="font-display italic">one vision.</em>
               </h2>
             </div>
             <Link
               href="/shop"
-              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
-                "categories",
-                200
-              )}`}
+              prefetch={true}
+              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end touch-manipulation ${revealClasses("categories", 200)}`}
             >
               View All Collections
-              <ArrowRight
-                className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300"
-                strokeWidth={2}
-              />
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300" strokeWidth={2} />
             </Link>
           </div>
 
@@ -721,36 +681,30 @@ export default function Home() {
               <Link
                 key={cat.slug}
                 href={`/shop?category=${cat.slug}`}
-                className={`group block gpu-accelerate ${revealClasses(
-                  "categories",
-                  300 + idx * 100
-                )}`}
+                prefetch={true}
+                className={`group block gpu-accelerate touch-manipulation ${revealClasses("categories", 300 + idx * 100)}`}
               >
-                <div className="relative aspect-[3/4] bg-bone rounded-lg overflow-hidden mb-4 contain-strict">
+                <div className="relative aspect-[3/4] bg-bone rounded-lg overflow-hidden mb-3 md:mb-4 contain-strict">
                   <img
                     src={cat.image}
                     alt={cat.name}
                     loading="lazy"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)] gpu-accelerate"
                   />
-
                   <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/20 transition-all duration-700" />
-
-                  <div className="absolute top-3 left-3">
-                    <p className="text-[9px] uppercase tracking-[0.3em] text-white/90 font-body">
+                  <div className="absolute top-2.5 md:top-3 left-2.5 md:left-3">
+                    <p className="text-[8px] md:text-[9px] uppercase tracking-[0.3em] text-white/90 font-body">
                       {cat.label}
                     </p>
                   </div>
                 </div>
-
                 <div>
-                  <h3 className="font-display text-lg md:text-2xl mb-1 md:mb-2 group-hover:opacity-70 transition-opacity duration-500">
+                  <h3 className="font-display text-base md:text-2xl mb-1 md:mb-2 group-hover:opacity-70 transition-opacity duration-500">
                     {cat.name}
                   </h3>
-                  <p className="text-ink/50 text-xs md:text-sm font-body leading-relaxed mb-3">
+                  <p className="text-ink/50 text-xs md:text-sm font-body leading-relaxed mb-2 md:mb-3 line-clamp-2">
                     {cat.desc}
                   </p>
-
                   <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] font-body group-hover:opacity-70 transition-opacity">
                     <span>Discover</span>
                     <span className="w-6 md:w-8 h-px bg-ink group-hover:w-12 md:group-hover:w-16 transition-all duration-500" />
@@ -763,16 +717,11 @@ export default function Home() {
       </section>
 
       {/* ==================== NEW ARRIVALS ==================== */}
-      <section
-        className="pb-20 md:pb-32 px-4 md:px-8 bg-bone/30 contain-layout"
-        data-section-id="new"
-      >
-        <div className="max-w-[1400px] mx-auto pt-16 md:pt-24">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 md:mb-14">
+      <section className="pb-16 md:pb-32 px-4 md:px-8 bg-bone/30 contain-layout" data-section-id="new">
+        <div className="max-w-[1400px] mx-auto pt-12 md:pt-24">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-6 mb-8 md:mb-14">
             <div>
-              <div
-                className={`flex items-center gap-2 mb-4 ${revealClasses("new")}`}
-              >
+              <div className={`flex items-center gap-2 mb-3 md:mb-4 ${revealClasses("new")}`}>
                 <Sparkles className="w-3.5 h-3.5 text-ink" strokeWidth={2} />
                 <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body">
                   03 — Just In
@@ -784,16 +733,11 @@ export default function Home() {
             </div>
             <Link
               href="/shop?sort=newest"
-              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
-                "new",
-                200
-              )}`}
+              prefetch={true}
+              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end touch-manipulation ${revealClasses("new", 200)}`}
             >
               View All New
-              <ArrowRight
-                className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300"
-                strokeWidth={2}
-              />
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300" strokeWidth={2} />
             </Link>
           </div>
 
@@ -801,12 +745,9 @@ export default function Home() {
             {loadingNew ? (
               <ProductGridSkeleton />
             ) : newArrivals.length === 0 ? (
-              <EmptyState
-                title="Coming soon..."
-                subtitle="New arrivals will appear here"
-              />
+              <EmptyState title="Coming soon..." subtitle="New arrivals will appear here" />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
                 {newArrivals.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -817,18 +758,11 @@ export default function Home() {
       </section>
 
       {/* ==================== FEATURED ==================== */}
-      <section
-        className="py-20 md:py-32 px-4 md:px-8 contain-layout"
-        data-section-id="featured"
-      >
+      <section className="py-16 md:py-32 px-4 md:px-8 contain-layout" data-section-id="featured">
         <div className="max-w-[1400px] mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 md:mb-14">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-6 mb-8 md:mb-14">
             <div>
-              <div
-                className={`flex items-center gap-2 mb-4 ${revealClasses(
-                  "featured"
-                )}`}
-              >
+              <div className={`flex items-center gap-2 mb-3 md:mb-4 ${revealClasses("featured")}`}>
                 <Star className="w-3.5 h-3.5 text-ink" strokeWidth={2} />
                 <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body">
                   04 — Featured
@@ -840,16 +774,11 @@ export default function Home() {
             </div>
             <Link
               href="/shop"
-              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
-                "featured",
-                200
-              )}`}
+              prefetch={true}
+              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end touch-manipulation ${revealClasses("featured", 200)}`}
             >
               View All Products
-              <ArrowRight
-                className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300"
-                strokeWidth={2}
-              />
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300" strokeWidth={2} />
             </Link>
           </div>
 
@@ -857,12 +786,9 @@ export default function Home() {
             {loadingFeatured ? (
               <ProductGridSkeleton />
             ) : featuredProducts.length === 0 ? (
-              <EmptyState
-                title="No featured products yet"
-                subtitle="Featured items will appear here"
-              />
+              <EmptyState title="No featured products yet" subtitle="Featured items will appear here" />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
                 {featuredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -873,21 +799,12 @@ export default function Home() {
       </section>
 
       {/* ==================== BEST SELLERS ==================== */}
-      <section
-        className="pb-20 md:pb-32 px-4 md:px-8 bg-bone/30 contain-layout"
-        data-section-id="best"
-      >
-        <div className="max-w-[1400px] mx-auto pt-16 md:pt-24">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 md:mb-14">
+      <section className="pb-16 md:pb-32 px-4 md:px-8 bg-bone/30 contain-layout" data-section-id="best">
+        <div className="max-w-[1400px] mx-auto pt-12 md:pt-24">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-6 mb-8 md:mb-14">
             <div>
-              <div
-                className={`flex items-center gap-2 mb-4 ${revealClasses(
-                  "best"
-                )}`}
-              >
-                <span className="w-3.5 h-3.5 text-ink text-sm flex items-center justify-center">
-                  ↗
-                </span>
+              <div className={`flex items-center gap-2 mb-3 md:mb-4 ${revealClasses("best")}`}>
+                <span className="w-3.5 h-3.5 text-ink text-sm flex items-center justify-center">↗</span>
                 <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body">
                   05 — Bestsellers
                 </p>
@@ -898,16 +815,11 @@ export default function Home() {
             </div>
             <Link
               href="/shop?sort=price-desc"
-              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
-                "best",
-                200
-              )}`}
+              prefetch={true}
+              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end touch-manipulation ${revealClasses("best", 200)}`}
             >
               Shop Bestsellers
-              <ArrowRight
-                className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300"
-                strokeWidth={2}
-              />
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300" strokeWidth={2} />
             </Link>
           </div>
 
@@ -915,12 +827,9 @@ export default function Home() {
             {loadingBest ? (
               <ProductGridSkeleton />
             ) : bestSellers.length === 0 ? (
-              <EmptyState
-                title="Coming soon..."
-                subtitle="Bestsellers will appear here"
-              />
+              <EmptyState title="Coming soon..." subtitle="Bestsellers will appear here" />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
                 {bestSellers.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -931,60 +840,32 @@ export default function Home() {
       </section>
 
       {/* ==================== BRAND STORY ==================== */}
-      <section
-        className="py-24 md:py-40 px-4 md:px-8 bg-ink text-ivory relative overflow-hidden contain-strict"
-        data-section-id="story"
-      >
+      <section className="py-20 md:py-40 px-4 md:px-8 bg-ink text-ivory relative overflow-hidden contain-strict" data-section-id="story">
         <div className="max-w-[1400px] mx-auto relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <p
-              className={`text-[10px] uppercase tracking-[0.4em] text-ivory/60 font-body mb-8 ${revealClasses(
-                "story"
-              )}`}
-            >
+            <p className={`text-[10px] uppercase tracking-[0.4em] text-ivory/60 font-body mb-6 md:mb-8 ${revealClasses("story")}`}>
               06 — Our Promise
             </p>
-
-            <h2 className={`display-xl mb-10 ${revealClasses("story", 100)}`}>
-              Every stitch,{" "}
-              <em className="font-display italic">a promise.</em>
+            <h2 className={`display-xl mb-8 md:mb-10 ${revealClasses("story", 100)}`}>
+              Every stitch, <em className="font-display italic">a promise.</em>
             </h2>
-
-            <p
-              className={`text-ivory/60 text-base md:text-lg leading-relaxed font-body max-w-2xl mx-auto mb-12 ${revealClasses(
-                "story",
-                200
-              )}`}
-            >
-              From the loom to your wardrobe, every ZAEM piece carries the
-              weight of intention. We work with artisans who share our
-              obsession with detail. We choose materials that honor both the
-              wearer and the earth.
+            <p className={`text-ivory/60 text-base md:text-lg leading-relaxed font-body max-w-2xl mx-auto mb-10 md:mb-12 ${revealClasses("story", 200)}`}>
+              From the loom to your wardrobe, every ZAEM piece carries the weight of intention. We work with artisans who share our obsession with detail. We choose materials that honor both the wearer and the earth.
             </p>
-
             <Link
               href="/about"
-              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-70 transition-opacity ${revealClasses(
-                "story",
-                300
-              )}`}
+              prefetch={true}
+              className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-70 transition-opacity touch-manipulation ${revealClasses("story", 300)}`}
             >
               Read Our Story
-              <ArrowRight
-                className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300"
-                strokeWidth={2}
-              />
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300" strokeWidth={2} />
             </Link>
           </div>
         </div>
-
         <div
           className="absolute top-1/2 left-1/2 font-display text-[25vw] text-ivory/[0.03] whitespace-nowrap select-none pointer-events-none italic gpu-accelerate"
           style={{
-            transform: `translate(-50%, -50%) translate3d(0, ${Math.max(
-              0,
-              (scrollY - 2400) * 0.08
-            )}px, 0)`,
+            transform: `translate(-50%, -50%) translate3d(0, ${Math.max(0, (scrollY - 2400) * 0.08)}px, 0)`,
           }}
         >
           ZAEM
@@ -992,34 +873,19 @@ export default function Home() {
       </section>
 
       {/* ==================== INSTAGRAM ==================== */}
-      <section
-        className="py-16 md:py-24 px-4 md:px-8 bg-bone/30 contain-layout"
-        data-section-id="instagram"
-      >
+      <section className="py-12 md:py-24 px-4 md:px-8 bg-bone/30 contain-layout" data-section-id="instagram">
         <div className="max-w-[1400px] mx-auto">
-          <div className="text-center mb-10 md:mb-14">
-            <div
-              className={`flex items-center justify-center gap-2 mb-4 ${revealClasses(
-                "instagram"
-              )}`}
-            >
-              <span className="w-4 h-4 text-ink text-sm flex items-center justify-center">
-                📸
-              </span>
+          <div className="text-center mb-8 md:mb-14">
+            <div className={`flex items-center justify-center gap-2 mb-3 md:mb-4 ${revealClasses("instagram")}`}>
+              <span className="w-4 h-4 text-ink text-sm flex items-center justify-center">📸</span>
               <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body">
                 07 — Follow Us
               </p>
             </div>
-            <h2 className={`display-lg mb-4 ${revealClasses("instagram", 100)}`}>
-              @zaemstore on{" "}
-              <em className="font-display italic">Instagram</em>
+            <h2 className={`display-lg mb-3 md:mb-4 ${revealClasses("instagram", 100)}`}>
+              @zaemstore on <em className="font-display italic">Instagram</em>
             </h2>
-            <p
-              className={`text-ink/50 text-sm font-body ${revealClasses(
-                "instagram",
-                200
-              )}`}
-            >
+            <p className={`text-ink/50 text-sm font-body ${revealClasses("instagram", 200)}`}>
               Tag us in your ZAEM looks to be featured
             </p>
           </div>
@@ -1031,10 +897,7 @@ export default function Home() {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`group relative aspect-square bg-bone rounded-lg overflow-hidden contain-strict gpu-accelerate ${revealClasses(
-                  "instagram",
-                  300 + i * 100
-                )}`}
+                className={`group relative aspect-square bg-bone rounded-lg overflow-hidden contain-strict gpu-accelerate ${revealClasses("instagram", 300 + i * 100)}`}
               >
                 <img
                   src={cat.image}
@@ -1054,40 +917,20 @@ export default function Home() {
       </section>
 
       {/* ==================== NEWSLETTER ==================== */}
-      <section
-        className="py-20 md:py-32 px-4 md:px-8 contain-layout"
-        data-section-id="newsletter"
-      >
+      <section className="py-16 md:py-32 px-4 md:px-8 contain-layout" data-section-id="newsletter">
         <div className="max-w-[1400px] mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-20 items-center">
             <div>
-              <p
-                className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body mb-6 ${revealClasses(
-                  "newsletter"
-                )}`}
-              >
+              <p className={`text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body mb-4 md:mb-6 ${revealClasses("newsletter")}`}>
                 08 — Newsletter
               </p>
-              <h2
-                className={`display-lg mb-6 ${revealClasses(
-                  "newsletter",
-                  100
-                )}`}
-              >
-                Join the{" "}
-                <em className="font-display italic">inner circle.</em>
+              <h2 className={`display-lg mb-5 md:mb-6 ${revealClasses("newsletter", 100)}`}>
+                Join the <em className="font-display italic">inner circle.</em>
               </h2>
-              <p
-                className={`text-ink/60 text-base font-body max-w-md ${revealClasses(
-                  "newsletter",
-                  200
-                )}`}
-              >
-                Be the first to discover new collections, private sales, and
-                stories from the atelier.
+              <p className={`text-ink/60 text-base font-body max-w-md ${revealClasses("newsletter", 200)}`}>
+                Be the first to discover new collections, private sales, and stories from the atelier.
               </p>
             </div>
-
             <div className={revealClasses("newsletter", 300)}>
               <NewsletterForm />
               <p className="text-ink/40 text-xs mt-4 font-body">
