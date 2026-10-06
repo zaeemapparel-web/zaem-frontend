@@ -46,6 +46,37 @@ interface Category {
 // ==================== FALLBACK CATEGORIES ====================
 const FALLBACK_CATEGORIES: Category[] = [
   {
+    name: "Man",
+    slug: "man",
+    children: [
+      { name: "New In", slug: "man-new-in" },
+      { name: "Ready to Wear", slug: "man-ready-to-wear" },
+      {
+        name: "Unstitched",
+        slug: "man-unstitched",
+        children: [
+          { name: "Platinum", slug: "man-unstitched-platinum" },
+          { name: "Gold", slug: "man-unstitched-gold" },
+          { name: "Silver", slug: "man-unstitched-silver" },
+          { name: "Latha", slug: "man-unstitched-latha" },
+          { name: "Boski", slug: "man-unstitched-boski" },
+          { name: "Khadar", slug: "man-unstitched-khadar" },
+        ],
+      },
+      {
+        name: "Winter",
+        slug: "man-winter",
+        children: [
+          { name: "Sweaters", slug: "man-winter-sweaters" },
+          { name: "Jackets", slug: "man-winter-jackets" },
+          { name: "Coats", slug: "man-winter-coats" },
+        ],
+      },
+      { name: "West", slug: "man-west" },
+      { name: "Accessories", slug: "man-accessories" },
+    ],
+  },
+  {
     name: "Woman",
     slug: "woman",
     children: [
@@ -82,34 +113,12 @@ const FALLBACK_CATEGORIES: Category[] = [
     ],
   },
   {
-    name: "Man",
-    slug: "man",
+    name: "Bags",
+    slug: "bags",
     children: [
-      { name: "New In", slug: "man-new-in" },
-      { name: "Ready to Wear", slug: "man-ready-to-wear" },
-      {
-        name: "Unstitched",
-        slug: "man-unstitched",
-        children: [
-          { name: "Platinum", slug: "man-unstitched-platinum" },
-          { name: "Gold", slug: "man-unstitched-gold" },
-          { name: "Silver", slug: "man-unstitched-silver" },
-          { name: "Latha", slug: "man-unstitched-latha" },
-          { name: "Boski", slug: "man-unstitched-boski" },
-          { name: "Khadar", slug: "man-unstitched-khadar" },
-        ],
-      },
-      {
-        name: "Winter",
-        slug: "man-winter",
-        children: [
-          { name: "Sweaters", slug: "man-winter-sweaters" },
-          { name: "Jackets", slug: "man-winter-jackets" },
-          { name: "Coats", slug: "man-winter-coats" },
-        ],
-      },
-      { name: "West", slug: "man-west" },
-      { name: "Accessories", slug: "man-accessories" },
+      { name: "Handbags", slug: "bags-handbags" },
+      { name: "Totes", slug: "bags-totes" },
+      { name: "Clutches", slug: "bags-clutches" },
     ],
   },
   {
@@ -135,15 +144,6 @@ const FALLBACK_CATEGORIES: Category[] = [
       { name: "Sets", slug: "fragrances-sets" },
     ],
   },
-  {
-    name: "Bags",
-    slug: "bags",
-    children: [
-      { name: "Handbags", slug: "bags-handbags" },
-      { name: "Totes", slug: "bags-totes" },
-      { name: "Clutches", slug: "bags-clutches" },
-    ],
-  },
 ];
 
 // ==================== HOOK: Dynamic Categories ====================
@@ -164,7 +164,13 @@ function useCategories() {
           try {
             const parsed = JSON.parse(cached);
             if (Array.isArray(parsed) && parsed.length > 0 && !cancelled) {
-              setCategories(parsed);
+              // Sort by preferred order
+              const order = ["man", "woman", "bags", "fragrances"];
+              const sorted = [...parsed].sort(
+                (a: any, b: any) =>
+                  order.indexOf(a.slug) - order.indexOf(b.slug)
+              );
+              setCategories(sorted);
               setLoading(false);
               return;
             }
@@ -177,11 +183,15 @@ function useCategories() {
         const data = await res.json();
 
         if (!cancelled && data.success && data.data?.categories?.length > 0) {
-          setCategories(data.data.categories);
+          const order = ["man", "woman", "bags", "fragrances"];
+          const sorted = [...data.data.categories].sort(
+            (a: any, b: any) => order.indexOf(a.slug) - order.indexOf(b.slug)
+          );
+          setCategories(sorted);
           try {
             sessionStorage.setItem(
               "zaem_categories_cache",
-              JSON.stringify(data.data.categories)
+              JSON.stringify(sorted)
             );
             sessionStorage.setItem("zaem_categories_time", now.toString());
           } catch {
@@ -327,8 +337,6 @@ const SORT_OPTIONS = [
   { label: "Newest", value: "newest" },
   { label: "Price: Low to High", value: "price-asc" },
   { label: "Price: High to Low", value: "price-desc" },
-  { label: "Name: A to Z", value: "name-asc" },
-  { label: "Name: Z to A", value: "name-desc" },
 ];
 
 // ==================== HELPERS ====================
@@ -599,7 +607,6 @@ function ShopContent() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [quickViewProductId, setQuickViewProductId] = useState<string | null>(null);
   const [aiSearchOpen, setAiSearchOpen] = useState(false);
@@ -718,8 +725,9 @@ function ShopContent() {
     if (category) count++;
     if (minPrice || maxPrice) count++;
     if (search) count++;
+    if (sort && sort !== "newest") count++;
     return count;
-  }, [category, minPrice, maxPrice, search]);
+  }, [category, minPrice, maxPrice, search, sort]);
 
   const pageTitle = useMemo(
     () => findCategoryBySlug(category, categories),
@@ -837,52 +845,6 @@ function ShopContent() {
                 >
                   <List className="w-3.5 h-3.5" strokeWidth={1.8} />
                 </button>
-              </div>
-
-              {/* Sort */}
-              <div className="relative">
-                <button
-                  onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-[#F5F5F7] dark:bg-[#1C1C1E] rounded-full text-[10px] tracking-widest uppercase font-body text-[#1D1D1F] dark:text-white hover:bg-[#E5E5E7] dark:hover:bg-[#2C2C2E] transition-colors shrink-0"
-                >
-                  Sort
-                  <ChevronDown
-                    className={`w-3 h-3 transition-transform duration-200 ${
-                      sortDropdownOpen ? "rotate-180" : ""
-                    }`}
-                    strokeWidth={2}
-                  />
-                </button>
-
-                {sortDropdownOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setSortDropdownOpen(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] shadow-xl rounded-xl z-20 py-2 overflow-hidden">
-                      {SORT_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => {
-                            setSort(opt.value);
-                            setSortDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2.5 text-sm font-body flex items-center justify-between transition-colors ${
-                            sort === opt.value
-                              ? "bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[#1D1D1F] dark:text-white"
-                              : "text-[#6E6E73] dark:text-[#98989D] hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E]"
-                          }`}
-                        >
-                          {opt.label}
-                          {sort === opt.value && (
-                            <Check className="w-3.5 h-3.5" strokeWidth={2} />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
               </div>
 
               {/* Filters (mobile) */}
@@ -1125,6 +1087,28 @@ function ShopContent() {
                         }`}
                       >
                         {range.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sort */}
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-[#6E6E73] dark:text-[#98989D] font-body mb-3">
+                    Sort By
+                  </p>
+                  <div className="space-y-1.5">
+                    {SORT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSort(opt.value)}
+                        className={`block text-sm font-body transition-colors ${
+                          sort === opt.value
+                            ? "text-[#1D1D1F] dark:text-white font-medium"
+                            : "text-[#6E6E73] dark:text-[#98989D] hover:text-[#1D1D1F] dark:hover:text-white"
+                        }`}
+                      >
+                        {opt.label}
                       </button>
                     ))}
                   </div>
@@ -1444,6 +1428,28 @@ function ShopContent() {
                     }`}
                   >
                     {range.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Sort */}
+            <div className="mb-8">
+              <p className="text-[10px] uppercase tracking-widest text-[#6E6E73] dark:text-[#98989D] font-body mb-3">
+                Sort By
+              </p>
+              <div className="space-y-2">
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSort(opt.value)}
+                    className={`block text-base font-body transition-colors ${
+                      sort === opt.value
+                        ? "text-[#1D1D1F] dark:text-white font-medium"
+                        : "text-[#6E6E73] dark:text-[#98989D]"
+                    }`}
+                  >
+                    {opt.label}
                   </button>
                 ))}
               </div>
