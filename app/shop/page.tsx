@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, Suspense, useCallback, useMemo } from "react";
+import {
+  useEffect,
+  useState,
+  Suspense,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   SlidersHorizontal,
@@ -15,14 +22,31 @@ import {
   Loader2,
   Check,
   Package,
+  Heart,
+  ArrowUp,
+  Share2,
 } from "lucide-react";
 import QuickViewModal from "@/components/QuickViewModal";
 import AISearchBar from "@/components/AISearchBar";
+import { useAuthStore } from "@/lib/store/authStore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// ==================== CATEGORIES DATA ====================
-const CATEGORIES = [
+// ==================== TYPES ====================
+interface Category {
+  id?: string;
+  name: string;
+  slug: string;
+  image?: string | null;
+  description?: string | null;
+  children?: Category[];
+  _count?: { products: number };
+  productCount?: number;
+}
+
+// ==================== FALLBACK CATEGORIES ====================
+// Used if API fails — page never breaks
+const FALLBACK_CATEGORIES: Category[] = [
   {
     name: "Woman",
     slug: "woman",
@@ -124,6 +148,183 @@ const CATEGORIES = [
   },
 ];
 
+// ==================== HOOK: Dynamic Categories ====================
+function useCategories() {
+  const [categories, setCategories] = useState<Category[]>(FALLBACK_CATEGORIES);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchCategories = async () => {
+      try {
+        // Check sessionStorage cache first
+        const cached = sessionStorage.getItem("zaem_categories_cache");
+        const cacheTime = sessionStorage.getItem("zaem_categories_time");
+        const now = Date.now();
+
+        // Cache valid for 1 hour
+        if (cached && cacheTime && now - parseInt(cacheTime) < 3600000) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0 && !cancelled) {
+              setCategories(parsed);
+              setLoading(false);
+              return;
+            }
+          } catch {
+            // ignore cache parse errors
+          }
+        }
+
+        const res = await fetch(`${API_URL}/api/categories`);
+        const data = await res.json();
+
+        if (!cancelled && data.success && data.data?.categories?.length > 0) {
+          setCategories(data.data.categories);
+          // Cache for future
+          try {
+            sessionStorage.setItem(
+              "zaem_categories_cache",
+              JSON.stringify(data.data.categories)
+            );
+            sessionStorage.setItem("zaem_categories_time", now.toString());
+          } catch {
+            // storage full — ignore
+          }
+        }
+      } catch (error) {
+        console.error("Category fetch error:", error);
+        // Fallback stays — page never breaks
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { categories, loading };
+}
+
+// ==================== HOOK: Recently Viewed ====================
+function useRecentlyViewed() {
+  const [recentIds, setRecentIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem("zaem_recently_viewed");
+      if (stored) setRecentIds(JSON.parse(stored));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const addRecent = useCallback((productId: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem("zaem_recently_viewed");
+      const current: string[] = stored ? JSON.parse(stored) : [];
+      const updated = [productId, ...current.filter((id) => id !== productId)].slice(0, 10);
+      localStorage.setItem("zaem_recently_viewed", JSON.stringify(updated));
+      setRecentIds(updated);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  return { recentIds, addRecent };
+}
+
+// ==================== HOOK: Wishlist ====================
+function useWishlist() {
+  const { token, isAuthenticated } = useAuthStore();
+  const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(false);
+
+  // Load wishlist on mount
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      setWishlistIds(new Set());
+      return;
+    }
+
+    const fetchWishlist = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/wishlist`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success && data.data?.wishlist) {
+          const ids = new Set<string>(
+            data.data.wishlist.map((item: any) => item.productId || item.product?.id)
+          );
+          setWishlistIds(ids);
+        }
+      } catch (error) {
+        console.error("Wishlist fetch error:", error);
+      }
+    };
+
+    fetchWishlist();
+  }, [isAuthenticated, token]);
+
+  const toggle = useCallback(
+    async (productId: string) => {
+      if (!isAuthenticated || !token) {
+        // Not logged in — return status for redirect
+        return { success: false, needsLogin: true };
+      }
+
+      setLoading(true);
+      const isInWishlist = wishlistIds.has(productId);
+
+      try {
+        const res = await fetch(
+          isInWishlist
+            ? `${API_URL}/api/wishlist/${productId}`
+            : `${API_URL}/api/wishlist`,
+          {
+            method: isInWishlist ? "DELETE" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: isInWishlist
+              ? undefined
+              : JSON.stringify({ productId }),
+          }
+        );
+
+        const data = await res.json();
+        if (data.success) {
+          setWishlistIds((prev) => {
+            const next = new Set(prev);
+            if (isInWishlist) next.delete(productId);
+            else next.add(productId);
+            return next;
+          });
+          return { success: true, added: !isInWishlist };
+        }
+        return { success: false, needsLogin: false };
+      } catch (error) {
+        console.error("Wishlist toggle error:", error);
+        return { success: false, needsLogin: false };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [isAuthenticated, token, wishlistIds]
+  );
+
+  return { wishlistIds, toggle, loading };
+}
+
+// ==================== CONSTANTS ====================
 const PRICE_RANGES = [
   { label: "All Prices", min: "", max: "" },
   { label: "Under Rs. 5,000", min: "0", max: "5000" },
@@ -140,14 +341,18 @@ const SORT_OPTIONS = [
   { label: "Name: Z to A", value: "name-desc" },
 ];
 
-const findCategoryBySlug = (slug: string): string => {
-  for (const cat of CATEGORIES) {
+// ==================== HELPERS ====================
+const findCategoryBySlug = (slug: string, categories: Category[]): string => {
+  if (!slug) return "The Collection";
+  for (const cat of categories) {
     if (cat.slug === slug) return cat.name;
-    for (const child of cat.children) {
-      if (child.slug === slug) return child.name;
-      if ("children" in child && (child as any).children) {
-        for (const grandchild of (child as any).children) {
-          if (grandchild.slug === slug) return grandchild.name;
+    if (cat.children) {
+      for (const child of cat.children) {
+        if (child.slug === slug) return child.name;
+        if (child.children) {
+          for (const grandchild of child.children) {
+            if (grandchild.slug === slug) return grandchild.name;
+          }
         }
       }
     }
@@ -155,42 +360,43 @@ const findCategoryBySlug = (slug: string): string => {
   return "The Collection";
 };
 
-const getBreadcrumb = (slug: string) => {
+const getBreadcrumb = (slug: string, categories: Category[]) => {
   if (!slug) return [{ label: "Shop", href: "/shop" }];
 
-  for (const cat of CATEGORIES) {
+  for (const cat of categories) {
     if (cat.slug === slug) {
       return [
         { label: "Shop", href: "/shop" },
         { label: cat.name, href: `/shop?category=${cat.slug}` },
       ];
     }
-    for (const child of cat.children) {
-      if (child.slug === slug) {
-        return [
-          { label: "Shop", href: "/shop" },
-          { label: cat.name, href: `/shop?category=${cat.slug}` },
-          { label: child.name, href: `/shop?category=${child.slug}` },
-        ];
-      }
-      if ("children" in child && (child as any).children) {
-        for (const grandchild of (child as any).children) {
-          if (grandchild.slug === slug) {
-            return [
-              { label: "Shop", href: "/shop" },
-              { label: cat.name, href: `/shop?category=${cat.slug}` },
-              { label: child.name, href: `/shop?category=${child.slug}` },
-              {
-                label: grandchild.name,
-                href: `/shop?category=${grandchild.slug}`,
-              },
-            ];
+    if (cat.children) {
+      for (const child of cat.children) {
+        if (child.slug === slug) {
+          return [
+            { label: "Shop", href: "/shop" },
+            { label: cat.name, href: `/shop?category=${cat.slug}` },
+            { label: child.name, href: `/shop?category=${child.slug}` },
+          ];
+        }
+        if (child.children) {
+          for (const grandchild of child.children) {
+            if (grandchild.slug === slug) {
+              return [
+                { label: "Shop", href: "/shop" },
+                { label: cat.name, href: `/shop?category=${cat.slug}` },
+                { label: child.name, href: `/shop?category=${child.slug}` },
+                {
+                  label: grandchild.name,
+                  href: `/shop?category=${grandchild.slug}`,
+                },
+              ];
+            }
           }
         }
       }
     }
   }
-
   return [{ label: "Shop", href: "/shop" }];
 };
 
@@ -199,10 +405,16 @@ function ProductCard({
   product,
   viewMode,
   onQuickView,
+  isInWishlist,
+  onWishlistToggle,
+  onView,
 }: {
   product: any;
   viewMode: "grid" | "list";
   onQuickView: (id: string) => void;
+  isInWishlist: boolean;
+  onWishlistToggle: (id: string) => void;
+  onView: (id: string) => void;
 }) {
   const hasDiscount =
     product.comparePrice && product.comparePrice > product.price;
@@ -212,13 +424,20 @@ function ProductCard({
       )
     : 0;
 
+  const handleWishlistClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onWishlistToggle(product.id);
+  };
+
   if (viewMode === "list") {
     return (
       <Link
         href={`/product/${product.slug}`}
+        onClick={() => onView(product.id)}
         className="group flex gap-4 p-4 bg-white border border-ink/10 rounded-xl hover:border-ink/30 hover:shadow-md transition-all duration-300"
       >
-        <div className="w-24 h-32 md:w-32 md:h-40 bg-bone rounded-lg overflow-hidden shrink-0">
+        <div className="w-24 h-32 md:w-32 md:h-40 bg-bone rounded-lg overflow-hidden shrink-0 relative">
           {product.images?.[0] ? (
             <img
               src={product.images[0]}
@@ -260,13 +479,31 @@ function ProductCard({
             </p>
           )}
         </div>
+
+        {/* Wishlist (list view) */}
+        <button
+          onClick={handleWishlistClick}
+          className="p-2 h-fit rounded-full hover:bg-bone transition-colors"
+          aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+        >
+          <Heart
+            className={`w-4 h-4 transition-colors ${
+              isInWishlist ? "fill-red-500 text-red-500" : "text-ink/40"
+            }`}
+            strokeWidth={2}
+          />
+        </button>
       </Link>
     );
   }
 
   return (
     <div className="group">
-      <Link href={`/product/${product.slug}`} className="block">
+      <Link
+        href={`/product/${product.slug}`}
+        onClick={() => onView(product.id)}
+        className="block"
+      >
         <div className="relative aspect-[3/4] bg-bone rounded-lg overflow-hidden mb-3">
           {product.images?.[0] ? (
             <img
@@ -304,6 +541,21 @@ function ProductCard({
             </div>
           )}
 
+          {/* Wishlist heart */}
+          <button
+            onClick={handleWishlistClick}
+            className="absolute top-2.5 right-2.5 w-9 h-9 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center hover:scale-110 transition-transform duration-200 shadow-sm"
+            aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+            style={{ display: product.stock > 0 && product.stock <= 5 ? "none" : undefined }}
+          >
+            <Heart
+              className={`w-4 h-4 transition-colors ${
+                isInWishlist ? "fill-red-500 text-red-500" : "text-ink/60"
+              }`}
+              strokeWidth={2}
+            />
+          </button>
+
           {/* Quick view */}
           <div className="absolute bottom-2.5 left-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <button
@@ -338,31 +590,36 @@ function ProductCard({
     </div>
   );
 }
-
 // ==================== MAIN CONTENT ====================
 function ShopContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // ==================== URL STATE ====================
   const [category, setCategory] = useState(searchParams.get("category") || "");
   const [minPrice, setMinPrice] = useState(searchParams.get("minPrice") || "");
   const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") || "");
   const [sort, setSort] = useState(searchParams.get("sort") || "newest");
   const [search, setSearch] = useState(searchParams.get("search") || "");
 
+  // ==================== UI STATE ====================
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-  const [quickViewProductId, setQuickViewProductId] = useState<string | null>(
-    null
-  );
+  const [quickViewProductId, setQuickViewProductId] = useState<string | null>(null);
   const [aiSearchOpen, setAiSearchOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [shareToast, setShareToast] = useState(false);
 
-  // ==================== BUILD QUERY ====================
+  // ==================== HOOKS ====================
+  const { categories, loading: categoriesLoading } = useCategories();
+  const { wishlistIds, toggle: toggleWishlist } = useWishlist();
+  const { addRecent } = useRecentlyViewed();
+
+  // ==================== PRODUCTS FETCH ====================
   const buildQuery = useCallback(() => {
     const params = new URLSearchParams();
     if (category) params.set("category", category);
@@ -373,26 +630,39 @@ function ShopContent() {
     return params.toString();
   }, [category, minPrice, maxPrice, sort, search]);
 
-  // ==================== FETCH PRODUCTS ====================
   useEffect(() => {
+    let cancelled = false;
     const fetchProducts = async () => {
       setLoading(true);
       try {
         const query = buildQuery();
         const res = await fetch(`${API_URL}/api/products?${query}`);
         const data = await res.json();
-        if (data.success) setProducts(data.data.products);
+        if (!cancelled && data.success) setProducts(data.data.products);
       } catch (error) {
         console.error(error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchProducts();
 
     const query = buildQuery();
     router.replace(`/shop${query ? `?${query}` : ""}`, { scroll: false });
+
+    return () => {
+      cancelled = true;
+    };
   }, [category, minPrice, maxPrice, sort, search, buildQuery, router]);
+
+  // ==================== SCROLL TO TOP ====================
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 800);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // ==================== HANDLERS ====================
   const clearFilters = useCallback(() => {
@@ -413,21 +683,69 @@ function ShopContent() {
     setQuickViewProductId(id);
   }, []);
 
+  const handleWishlistToggle = useCallback(
+    async (id: string) => {
+      const result = await toggleWishlist(id);
+      if (result?.needsLogin) {
+        router.push("/account/login");
+      }
+    },
+    [toggleWishlist, router]
+  );
+
+  const handleView = useCallback(
+    (id: string) => {
+      addRecent(id);
+    },
+    [addRecent]
+  );
+
+  const handleShare = useCallback(async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ url, title: "ZAEM" });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareToast(true);
+        setTimeout(() => setShareToast(false), 2500);
+      }
+    } catch {
+      // user cancelled
+    }
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  // ==================== MEMO ====================
   const hasActiveFilters = useMemo(
     () => !!(category || minPrice || maxPrice || search),
     [category, minPrice, maxPrice, search]
   );
 
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (category) count++;
+    if (minPrice || maxPrice) count++;
+    if (search) count++;
+    return count;
+  }, [category, minPrice, maxPrice, search]);
+
   const pageTitle = useMemo(
-    () => findCategoryBySlug(category),
-    [category]
+    () => findCategoryBySlug(category, categories),
+    [category, categories]
   );
 
-  const breadcrumb = useMemo(() => getBreadcrumb(category), [category]);
+  const breadcrumb = useMemo(
+    () => getBreadcrumb(category, categories),
+    [category, categories]
+  );
 
+  // ==================== RENDER ====================
   return (
     <main className="bg-ivory text-ink min-h-screen">
-
       {/* ==================== PAGE HEADER ==================== */}
       <section className="pt-8 md:pt-12 pb-6 md:pb-8 px-4 md:px-8 border-b border-ink/10">
         <div className="max-w-[1600px] mx-auto">
@@ -449,7 +767,7 @@ function ShopContent() {
             ))}
           </nav>
 
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex items-end justify-between gap-4 flex-wrap">
             <div>
               <h1 className="font-display text-3xl md:text-5xl lg:text-6xl mb-2">
                 {pageTitle}
@@ -462,6 +780,16 @@ function ShopContent() {
                   : "A curated selection of premium pieces"}
               </p>
             </div>
+
+            {/* Share button */}
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-body text-ink/60 hover:text-ink transition-colors"
+              aria-label="Share this page"
+            >
+              <Share2 className="w-3.5 h-3.5" strokeWidth={1.8} />
+              Share
+            </button>
           </div>
         </div>
       </section>
@@ -482,7 +810,7 @@ function ShopContent() {
               >
                 All
               </button>
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <button
                   key={cat.slug}
                   onClick={() => setCategory(cat.slug)}
@@ -574,10 +902,15 @@ function ShopContent() {
               {/* Filters (mobile) */}
               <button
                 onClick={() => setMobileFiltersOpen(true)}
-                className="lg:hidden flex items-center gap-1.5 px-3.5 py-2 bg-bone/50 rounded-full text-[10px] tracking-widest uppercase font-body hover:bg-bone transition-colors"
+                className="lg:hidden flex items-center gap-1.5 px-3.5 py-2 bg-bone/50 rounded-full text-[10px] tracking-widest uppercase font-body hover:bg-bone transition-colors relative"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={1.8} />
                 Filters
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-ink text-white text-[9px] rounded-full flex items-center justify-center font-medium">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -588,7 +921,6 @@ function ShopContent() {
       <section className="py-8 md:py-10 px-4 md:px-8">
         <div className="max-w-[1600px] mx-auto">
           <div className="grid lg:grid-cols-12 gap-8">
-
             {/* ==================== SIDEBAR (Desktop) ==================== */}
             <aside className="hidden lg:block lg:col-span-3">
               <div className="sticky top-24 space-y-8">
@@ -622,6 +954,7 @@ function ShopContent() {
                       <button
                         onClick={() => setSearch("")}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-bone rounded-full transition-colors"
+                        aria-label="Clear search"
                       >
                         <X className="w-3 h-3 text-ink/40" strokeWidth={2} />
                       </button>
@@ -629,7 +962,7 @@ function ShopContent() {
                   </div>
                 </div>
 
-                {/* Categories */}
+                {/* Categories (dynamic) */}
                 <div>
                   <p className="text-[10px] uppercase tracking-widest text-ink/60 font-body mb-3">
                     Category
@@ -646,132 +979,146 @@ function ShopContent() {
                     All Products
                   </button>
 
-                  {CATEGORIES.map((cat) => {
-                    const isExpanded = expandedCategories.includes(cat.slug);
-                    return (
-                      <div key={cat.slug} className="mb-0.5">
-                        <div className="flex items-center justify-between">
-                          <button
-                            onClick={() => setCategory(cat.slug)}
-                            className={`block text-sm font-body py-1.5 transition-colors text-left flex-1 ${
-                              category === cat.slug
-                                ? "text-ink font-medium"
-                                : "text-ink/60 hover:text-ink"
-                            }`}
-                          >
-                            {cat.name}
-                          </button>
-                          <button
-                            onClick={() => toggleExpand(cat.slug)}
-                            className="p-1 text-ink/40 hover:text-ink transition-colors"
-                            aria-label="Expand"
-                          >
-                            <ChevronDown
-                              className={`w-3 h-3 transition-transform duration-200 ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
-                              strokeWidth={2}
-                            />
-                          </button>
-                        </div>
-
+                  {categoriesLoading && (
+                    <div className="space-y-2 mt-3">
+                      {[1, 2, 3, 4].map((i) => (
                         <div
-                          className={`overflow-hidden transition-all duration-300 ${
-                            isExpanded
-                              ? "max-h-[800px] opacity-100 mt-1"
-                              : "max-h-0 opacity-0"
-                          }`}
-                        >
-                          <div className="pl-3 border-l border-ink/10 space-y-0.5">
-                            {cat.children.map((child: any) => {
-                              if (
-                                child.children &&
-                                child.children.length > 0
-                              ) {
-                                const childKey = `${cat.slug}-${child.slug}`;
-                                const isChildExpanded =
-                                  expandedCategories.includes(childKey);
+                          key={i}
+                          className="h-4 bg-bone rounded animate-pulse w-3/4"
+                        />
+                      ))}
+                    </div>
+                  )}
 
-                                return (
-                                  <div key={child.slug}>
-                                    <div className="flex items-center justify-between">
-                                      <button
-                                        onClick={() =>
-                                          setCategory(child.slug)
-                                        }
-                                        className={`block text-xs font-body py-1 transition-colors text-left flex-1 ${
-                                          category === child.slug
-                                            ? "text-ink font-medium"
-                                            : "text-ink/50 hover:text-ink"
-                                        }`}
-                                      >
-                                        {child.name}
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          toggleExpand(childKey)
-                                        }
-                                        className="p-1 text-ink/30 hover:text-ink transition-colors"
-                                      >
-                                        <ChevronDown
-                                          className={`w-2.5 h-2.5 transition-transform duration-200 ${
-                                            isChildExpanded ? "rotate-180" : ""
+                  {!categoriesLoading &&
+                    categories.map((cat) => {
+                      const isExpanded = expandedCategories.includes(cat.slug);
+                      const hasChildren = cat.children && cat.children.length > 0;
+                      const productCount = cat._count?.products;
+
+                      return (
+                        <div key={cat.slug} className="mb-0.5">
+                          <div className="flex items-center justify-between">
+                            <button
+                              onClick={() => setCategory(cat.slug)}
+                              className={`block text-sm font-body py-1.5 transition-colors text-left flex-1 ${
+                                category === cat.slug
+                                  ? "text-ink font-medium"
+                                  : "text-ink/60 hover:text-ink"
+                              }`}
+                            >
+                              {cat.name}
+                              {productCount !== undefined && (
+                                <span className="text-ink/40 ml-1">
+                                  ({productCount})
+                                </span>
+                              )}
+                            </button>
+                            {hasChildren && (
+                              <button
+                                onClick={() => toggleExpand(cat.slug)}
+                                className="p-1 text-ink/40 hover:text-ink transition-colors"
+                                aria-label="Expand"
+                              >
+                                <ChevronDown
+                                  className={`w-3 h-3 transition-transform duration-200 ${
+                                    isExpanded ? "rotate-180" : ""
+                                  }`}
+                                  strokeWidth={2}
+                                />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Children */}
+                          {hasChildren && (
+                            <div
+                              className={`overflow-hidden transition-all duration-300 ${
+                                isExpanded
+                                  ? "max-h-[800px] opacity-100 mt-1"
+                                  : "max-h-0 opacity-0"
+                              }`}
+                            >
+                              <div className="pl-3 border-l border-ink/10 space-y-0.5">
+                                {cat.children!.map((child) => {
+                                  const hasGrandchildren =
+                                    child.children && child.children.length > 0;
+                                  const childKey = `${cat.slug}-${child.slug}`;
+                                  const isChildExpanded =
+                                    expandedCategories.includes(childKey);
+                                  const childCount = child._count?.products;
+
+                                  return (
+                                    <div key={child.slug}>
+                                      <div className="flex items-center justify-between">
+                                        <button
+                                          onClick={() => setCategory(child.slug)}
+                                          className={`block text-xs font-body py-1 transition-colors text-left flex-1 ${
+                                            category === child.slug
+                                              ? "text-ink font-medium"
+                                              : "text-ink/50 hover:text-ink"
                                           }`}
-                                          strokeWidth={2}
-                                        />
-                                      </button>
-                                    </div>
-
-                                    <div
-                                      className={`overflow-hidden transition-all duration-300 ${
-                                        isChildExpanded
-                                          ? "max-h-[500px] opacity-100"
-                                          : "max-h-0 opacity-0"
-                                      }`}
-                                    >
-                                      <div className="pl-3 border-l border-ink/10 space-y-0.5 mt-0.5">
-                                        {child.children.map(
-                                          (grandchild: any) => (
-                                            <button
-                                              key={grandchild.slug}
-                                              onClick={() =>
-                                                setCategory(grandchild.slug)
-                                              }
-                                              className={`block w-full text-left text-[11px] font-body py-1 transition-colors ${
-                                                category === grandchild.slug
-                                                  ? "text-ink font-medium"
-                                                  : "text-ink/40 hover:text-ink"
+                                        >
+                                          {child.name}
+                                          {childCount !== undefined && (
+                                            <span className="text-ink/40 ml-1">
+                                              ({childCount})
+                                            </span>
+                                          )}
+                                        </button>
+                                        {hasGrandchildren && (
+                                          <button
+                                            onClick={() => toggleExpand(childKey)}
+                                            className="p-1 text-ink/30 hover:text-ink transition-colors"
+                                            aria-label="Expand"
+                                          >
+                                            <ChevronDown
+                                              className={`w-2.5 h-2.5 transition-transform duration-200 ${
+                                                isChildExpanded ? "rotate-180" : ""
                                               }`}
-                                            >
-                                              {grandchild.name}
-                                            </button>
-                                          )
+                                              strokeWidth={2}
+                                            />
+                                          </button>
                                         )}
                                       </div>
-                                    </div>
-                                  </div>
-                                );
-                              }
 
-                              return (
-                                <button
-                                  key={child.slug}
-                                  onClick={() => setCategory(child.slug)}
-                                  className={`block w-full text-left text-xs font-body py-1 transition-colors ${
-                                    category === child.slug
-                                      ? "text-ink font-medium"
-                                      : "text-ink/50 hover:text-ink"
-                                  }`}
-                                >
-                                  {child.name}
-                                </button>
-                              );
-                            })}
-                          </div>
+                                      {/* Grandchildren */}
+                                      {hasGrandchildren && (
+                                        <div
+                                          className={`overflow-hidden transition-all duration-300 ${
+                                            isChildExpanded
+                                              ? "max-h-[500px] opacity-100"
+                                              : "max-h-0 opacity-0"
+                                          }`}
+                                        >
+                                          <div className="pl-3 border-l border-ink/10 space-y-0.5 mt-0.5">
+                                            {child.children!.map((grandchild) => (
+                                              <button
+                                                key={grandchild.slug}
+                                                onClick={() =>
+                                                  setCategory(grandchild.slug)
+                                                }
+                                                className={`block w-full text-left text-[11px] font-body py-1 transition-colors ${
+                                                  category === grandchild.slug
+                                                    ? "text-ink font-medium"
+                                                    : "text-ink/40 hover:text-ink"
+                                                }`}
+                                              >
+                                                {grandchild.name}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
 
                 {/* Price */}
@@ -825,7 +1172,7 @@ function ShopContent() {
                       onClick={() => setCategory("")}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white text-[10px] tracking-widest uppercase font-body rounded-full hover:bg-ink/80 transition-colors"
                     >
-                      {findCategoryBySlug(category)}
+                      {findCategoryBySlug(category, categories)}
                       <X className="w-3 h-3" strokeWidth={2} />
                     </button>
                   )}
@@ -846,7 +1193,7 @@ function ShopContent() {
                       onClick={() => setSearch("")}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white text-[10px] tracking-widest uppercase font-body rounded-full hover:bg-ink/80 transition-colors"
                     >
-                      "{search}"
+                      &quot;{search}&quot;
                       <X className="w-3 h-3" strokeWidth={2} />
                     </button>
                   )}
@@ -902,6 +1249,9 @@ function ShopContent() {
                       product={product}
                       viewMode={viewMode}
                       onQuickView={handleQuickView}
+                      isInWishlist={wishlistIds.has(product.id)}
+                      onWishlistToggle={handleWishlistToggle}
+                      onView={handleView}
                     />
                   ))}
                 </div>
@@ -953,16 +1303,16 @@ function ShopContent() {
               <button
                 onClick={() => setCategory("")}
                 className={`block text-base font-body mb-2 transition-colors ${
-                  !category
-                    ? "text-ink font-medium"
-                    : "text-ink/60"
+                  !category ? "text-ink font-medium" : "text-ink/60"
                 }`}
               >
                 All Products
               </button>
 
-              {CATEGORIES.map((cat) => {
+              {categories.map((cat) => {
                 const isExpanded = expandedCategories.includes(cat.slug);
+                const hasChildren = cat.children && cat.children.length > 0;
+
                 return (
                   <div key={cat.slug} className="mb-0.5">
                     <div className="flex items-center justify-between">
@@ -976,30 +1326,34 @@ function ShopContent() {
                       >
                         {cat.name}
                       </button>
-                      <button
-                        onClick={() => toggleExpand(cat.slug)}
-                        className="p-1.5 text-ink/40"
-                        aria-label="Expand"
-                      >
-                        <ChevronDown
-                          className={`w-4 h-4 transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                          strokeWidth={2}
-                        />
-                      </button>
+                      {hasChildren && (
+                        <button
+                          onClick={() => toggleExpand(cat.slug)}
+                          className="p-1.5 text-ink/40"
+                          aria-label="Expand"
+                        >
+                          <ChevronDown
+                            className={`w-4 h-4 transition-transform duration-200 ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                            strokeWidth={2}
+                          />
+                        </button>
+                      )}
                     </div>
 
-                    <div
-                      className={`overflow-hidden transition-all duration-300 ${
-                        isExpanded
-                          ? "max-h-[800px] opacity-100 mt-1"
-                          : "max-h-0 opacity-0"
-                      }`}
-                    >
-                      <div className="pl-3 border-l border-ink/10 space-y-0.5">
-                        {cat.children.map((child: any) => {
-                          if (child.children && child.children.length > 0) {
+                    {hasChildren && (
+                      <div
+                        className={`overflow-hidden transition-all duration-300 ${
+                          isExpanded
+                            ? "max-h-[800px] opacity-100 mt-1"
+                            : "max-h-0 opacity-0"
+                        }`}
+                      >
+                        <div className="pl-3 border-l border-ink/10 space-y-0.5">
+                          {cat.children!.map((child) => {
+                            const hasGrandchildren =
+                              child.children && child.children.length > 0;
                             const childKey = `${cat.slug}-${child.slug}`;
                             const isChildExpanded =
                               expandedCategories.includes(childKey);
@@ -1017,64 +1371,55 @@ function ShopContent() {
                                   >
                                     {child.name}
                                   </button>
-                                  <button
-                                    onClick={() => toggleExpand(childKey)}
-                                    className="p-1 text-ink/30"
-                                  >
-                                    <ChevronDown
-                                      className={`w-3 h-3 transition-transform duration-200 ${
-                                        isChildExpanded ? "rotate-180" : ""
-                                      }`}
-                                      strokeWidth={2}
-                                    />
-                                  </button>
+                                  {hasGrandchildren && (
+                                    <button
+                                      onClick={() => toggleExpand(childKey)}
+                                      className="p-1 text-ink/30"
+                                      aria-label="Expand"
+                                    >
+                                      <ChevronDown
+                                        className={`w-3 h-3 transition-transform duration-200 ${
+                                          isChildExpanded ? "rotate-180" : ""
+                                        }`}
+                                        strokeWidth={2}
+                                      />
+                                    </button>
+                                  )}
                                 </div>
 
-                                <div
-                                  className={`overflow-hidden transition-all duration-300 ${
-                                    isChildExpanded
-                                      ? "max-h-[500px] opacity-100"
-                                      : "max-h-0 opacity-0"
-                                  }`}
-                                >
-                                  <div className="pl-3 border-l border-ink/10 space-y-0.5 mt-0.5">
-                                    {child.children.map((grandchild: any) => (
-                                      <button
-                                        key={grandchild.slug}
-                                        onClick={() =>
-                                          setCategory(grandchild.slug)
-                                        }
-                                        className={`block w-full text-left text-xs font-body py-1.5 transition-colors ${
-                                          category === grandchild.slug
-                                            ? "text-ink font-medium"
-                                            : "text-ink/40"
-                                        }`}
-                                      >
-                                        {grandchild.name}
-                                      </button>
-                                    ))}
+                                {hasGrandchildren && (
+                                  <div
+                                    className={`overflow-hidden transition-all duration-300 ${
+                                      isChildExpanded
+                                        ? "max-h-[500px] opacity-100"
+                                        : "max-h-0 opacity-0"
+                                    }`}
+                                  >
+                                    <div className="pl-3 border-l border-ink/10 space-y-0.5 mt-0.5">
+                                      {child.children!.map((grandchild) => (
+                                        <button
+                                          key={grandchild.slug}
+                                          onClick={() =>
+                                            setCategory(grandchild.slug)
+                                          }
+                                          className={`block w-full text-left text-xs font-body py-1.5 transition-colors ${
+                                            category === grandchild.slug
+                                              ? "text-ink font-medium"
+                                              : "text-ink/40"
+                                          }`}
+                                        >
+                                          {grandchild.name}
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
+                                )}
                               </div>
                             );
-                          }
-
-                          return (
-                            <button
-                              key={child.slug}
-                              onClick={() => setCategory(child.slug)}
-                              className={`block w-full text-left text-sm font-body py-1.5 transition-colors ${
-                                category === child.slug
-                                  ? "text-ink font-medium"
-                                  : "text-ink/50"
-                              }`}
-                            >
-                              {child.name}
-                            </button>
-                          );
-                        })}
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -1140,20 +1485,36 @@ function ShopContent() {
         </div>
       </div>
 
+      {/* ==================== SCROLL TO TOP ==================== */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-24 right-4 md:right-6 z-40 w-11 h-11 bg-ink text-white rounded-full shadow-lg hover:bg-gold hover:text-ink transition-colors duration-300 flex items-center justify-center"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="w-4 h-4" strokeWidth={2} />
+        </button>
+      )}
+
+      {/* ==================== SHARE TOAST ==================== */}
+      {shareToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] bg-ink text-white text-[11px] tracking-widest uppercase font-body px-5 py-3 rounded-full shadow-2xl animate-[fadeIn_0.3s_ease-out]">
+          Link copied ✓
+        </div>
+      )}
+
       {/* ==================== MODALS ==================== */}
       <QuickViewModal
         productId={quickViewProductId}
         onClose={() => setQuickViewProductId(null)}
       />
 
-      <AISearchBar
-        isOpen={aiSearchOpen}
-        onClose={() => setAiSearchOpen(false)}
-      />
+      <AISearchBar isOpen={aiSearchOpen} onClose={() => setAiSearchOpen(false)} />
     </main>
   );
 }
 
+// ==================== PAGE EXPORT ====================
 export default function ShopPage() {
   return (
     <Suspense
