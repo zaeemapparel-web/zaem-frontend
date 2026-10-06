@@ -2,27 +2,63 @@
 
 /* ============================================================
    ZAEM — DESIGN TOKENS
+   Ultra-Premium, Apple-Level, No Gold
    ============================================================ */
 
 @theme {
-  /* Colors — Quiet Luxury Palette */
-  --color-ivory: #FAF8F4;
-  --color-bone: #F5F0E8;
-  --color-ink: #0A0A0A;
-  --color-gold: #C9A961;
-  --color-muted: #75705F;
-  --color-charcoal: #1A1A1A;
-  --color-cream: #EDE8DD;
+  /* ========== CORE PALETTE (Editorial / Quiet Luxury) ========== */
+  --color-ivory: #FAFAFA;
+  --color-bone: #F5F5F7;
+  --color-ink: #1D1D1F;
+  --color-charcoal: #2C2C2E;
+  --color-muted: #6E6E73;
+  --color-subtle: #86868B;
+  --color-line: #E5E5E7;
+  --color-line-strong: #D2D2D7;
+  --color-cream: #EFEFEF;
+  --color-pure-white: #FFFFFF;
 
-  /* Fonts */
-  --font-display: 'Playfair Display', serif;
-  --font-body: 'Inter', sans-serif;
+  /* ========== ACCENT (Minimal — Black Only) ========== */
+  --color-accent: #1D1D1F;
+  --color-accent-hover: #000000;
+  --color-accent-soft: #F5F5F7;
 
-  /* Easings */
+  /* ========== STATES ========== */
+  --color-success: #2E7D32;
+  --color-success-soft: #E8F5E9;
+  --color-danger: #C62828;
+  --color-danger-soft: #FFEBEE;
+  --color-warning: #E65100;
+  --color-warning-soft: #FFF3E0;
+  --color-info: #1565C0;
+  --color-info-soft: #E3F2FD;
+
+  /* ========== TYPOGRAPHY ========== */
+  --font-display: 'Playfair Display', 'Times New Roman', serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* ========== EASINGS (Apple-style) ========== */
   --ease-luxury: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-snappy: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 
-  /* Animations */
+  /* ========== RADII ========== */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* ========== SHADOWS (Apple-style, subtle) ========== */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.06);
+
+  /* ========== ANIMATIONS ========== */
   --animate-marquee: marquee 40s linear infinite;
   --animate-marquee-slow: marquee 60s linear infinite;
   --animate-shimmer: shimmer 2s linear infinite;
@@ -30,7 +66,6 @@
   --animate-fade-in: fadeIn 1.2s var(--ease-luxury) both;
   --animate-reveal-up: revealUp 1.2s var(--ease-luxury) both;
   --animate-clip-reveal: clipReveal 1.4s var(--ease-luxury) both;
-  --animate-pulse-gold: pulseGold 3s ease-in-out infinite;
 }
 
 /* ============================================================
@@ -74,26 +109,34 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   overscroll-behavior-y: none;
+  font-feature-settings: 'cv11', 'ss01';
   transition: background-color 0.5s var(--ease-luxury),
     color 0.5s var(--ease-luxury);
 }
 
 /* ============================================================
-   DARK MODE
+   DARK MODE (Apple-Style)
    ============================================================ */
 
 .dark {
-  --color-ivory: #0A0A0A;
-  --color-bone: #1A1A1A;
-  --color-ink: #FAF8F4;
-  --color-muted: #A8A296;
-  --color-cream: #2A2A2A;
-  --color-charcoal: #EDE8DD;
+  --color-ivory: #000000;
+  --color-bone: #1C1C1E;
+  --color-ink: #F5F5F7;
+  --color-charcoal: #2C2C2E;
+  --color-muted: #98989D;
+  --color-subtle: #6E6E73;
+  --color-line: #38383A;
+  --color-line-strong: #48484A;
+  --color-cream: #2C2C2E;
+  --color-pure-white: #FFFFFF;
+  --color-accent: #F5F5F7;
+  --color-accent-hover: #FFFFFF;
+  --color-accent-soft: #1C1C1E;
 }
 
 .dark body {
-  background-color: #0A0A0A;
-  color: #FAF8F4;
+  background-color: #000000;
+  color: #F5F5F7;
 }
 
 .dark body,
@@ -112,42 +155,43 @@ body {
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: #1A1A1A;
+  background: #1C1C1E;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #75705F;
+  background: #48484A;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #C9A961;
+  background: #6E6E73;
 }
 
 .dark ::selection {
-  background: var(--color-gold);
-  color: #0A0A0A;
+  background: #F5F5F7;
+  color: #000000;
 }
 
 /* ============================================================
-   CUSTOM SCROLLBAR
+   CUSTOM SCROLLBAR (Apple-Style)
    ============================================================ */
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bone);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-muted);
-  border-radius: 0;
+  background: var(--color-line-strong);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-ivory);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-gold);
+  background: var(--color-muted);
 }
 
 .scrollbar-hide {
@@ -164,7 +208,7 @@ body {
    ============================================================ */
 
 ::selection {
-  background: var(--color-gold);
+  background: var(--color-accent);
   color: var(--color-ivory);
 }
 
@@ -262,9 +306,9 @@ body {
   to { clip-path: inset(0 0 0 0); opacity: 1; }
 }
 
-@keyframes pulseGold {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 97, 0.4); }
-  50% { box-shadow: 0 0 0 12px rgba(201, 169, 97, 0); }
+@keyframes pulseSoft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(29, 29, 31, 0.15); }
+  50% { box-shadow: 0 0 0 12px rgba(29, 29, 31, 0); }
 }
 
 @keyframes glow {
@@ -317,7 +361,7 @@ body {
   to { opacity: 1; transform: rotate(0) scale(1); }
 }
 
-@keyframes goldShimmer {
+@keyframes shimmerText {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
@@ -327,14 +371,14 @@ body {
   50% { transform: translateY(-6px); }
 }
 
-@keyframes glowPulse {
+@keyframes pulseRing {
   0%, 100% { 
-    box-shadow: 0 0 20px rgba(201, 169, 97, 0.3),
-                0 0 40px rgba(201, 169, 97, 0.1);
+    box-shadow: 0 0 0 0 rgba(29, 29, 31, 0.1),
+                0 0 0 0 rgba(29, 29, 31, 0.05);
   }
   50% { 
-    box-shadow: 0 0 30px rgba(201, 169, 97, 0.5),
-                0 0 60px rgba(201, 169, 97, 0.2);
+    box-shadow: 0 0 0 8px rgba(29, 29, 31, 0.05),
+                0 0 0 16px rgba(29, 29, 31, 0);
   }
 }
 
@@ -370,8 +414,8 @@ body {
 }
 
 @keyframes voicePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
-  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.6); }
+  50% { box-shadow: 0 0 0 8px rgba(198, 40, 40, 0); }
 }
 
 @keyframes imagePreviewPop {
@@ -431,7 +475,7 @@ body {
 }
 
 /* ============================================================
-   BUTTON STYLES
+   BUTTON STYLES (Apple-Style)
    ============================================================ */
 
 .btn-primary {
@@ -447,6 +491,7 @@ body {
   letter-spacing: 0.3em;
   text-transform: uppercase;
   border: 1px solid var(--color-ink);
+  border-radius: var(--radius-full);
   cursor: pointer;
   transition: all 0.5s var(--ease-luxury);
   position: relative;
@@ -456,17 +501,18 @@ body {
 .btn-primary:hover {
   background: transparent;
   color: var(--color-ink);
+  transform: translateY(-1px);
 }
 
 .dark .btn-primary {
-  background: var(--color-gold);
-  color: #0A0A0A;
-  border-color: var(--color-gold);
+  background: var(--color-ink);
+  color: #000000;
+  border-color: var(--color-ink);
 }
 
 .dark .btn-primary:hover {
   background: transparent;
-  color: var(--color-gold);
+  color: var(--color-ink);
 }
 
 .btn-outline {
@@ -482,6 +528,7 @@ body {
   letter-spacing: 0.3em;
   text-transform: uppercase;
   border: 1px solid var(--color-ink);
+  border-radius: var(--radius-full);
   cursor: pointer;
   transition: all 0.5s var(--ease-luxury);
 }
@@ -492,67 +539,67 @@ body {
 }
 
 .dark .btn-outline {
-  color: var(--color-gold);
-  border-color: var(--color-gold);
+  color: var(--color-ink);
+  border-color: var(--color-ink);
 }
 
 .dark .btn-outline:hover {
-  background: var(--color-gold);
-  color: #0A0A0A;
+  background: var(--color-ink);
+  color: #000000;
 }
 
 /* ============================================================
-   GLASS EFFECTS
+   GLASS EFFECTS (Apple-Style)
    ============================================================ */
 
 .glass {
-  background: rgba(250, 248, 244, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(10, 10, 10, 0.05);
+  background: rgba(250, 250, 250, 0.72);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .dark .glass {
-  background: rgba(10, 10, 10, 0.75);
-  border-bottom: 1px solid rgba(250, 248, 244, 0.05);
+  background: rgba(0, 0, 0, 0.72);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-dark {
-  background: rgba(10, 10, 10, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
 }
 
 /* ============================================================
-   HOVER EFFECTS
+   HOVER EFFECTS (Subtle, Apple-Style)
    ============================================================ */
 
 .hover-lift {
-  transition: transform 0.5s var(--ease-luxury),
-    box-shadow 0.5s var(--ease-luxury);
+  transition: transform 0.4s var(--ease-luxury),
+    box-shadow 0.4s var(--ease-luxury);
 }
 
 .hover-lift:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px -20px rgba(10, 10, 10, 0.2);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
-.hover-glow {
-  transition: all 0.5s var(--ease-luxury);
+.hover-subtle {
+  transition: all 0.3s var(--ease-luxury);
 }
 
-.hover-glow:hover {
-  box-shadow: 0 0 30px rgba(201, 169, 97, 0.3);
+.hover-subtle:hover {
+  background: var(--color-accent-soft);
 }
 
 /* ============================================================
-   FOCUS STATES (A11Y)
+   FOCUS STATES (A11Y, Apple-Style)
    ============================================================ */
 
 *:focus-visible {
   outline: 2px solid var(--color-ink);
   outline-offset: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .dark *:focus-visible {
@@ -565,22 +612,30 @@ body {
 
 a,
 button {
-  transition: color 0.4s var(--ease-luxury),
-    background-color 0.4s var(--ease-luxury),
-    border-color 0.4s var(--ease-luxury),
-    opacity 0.4s var(--ease-luxury);
+  transition: color 0.3s var(--ease-luxury),
+    background-color 0.3s var(--ease-luxury),
+    border-color 0.3s var(--ease-luxury),
+    opacity 0.3s var(--ease-luxury);
 }
 
 main {
-  animation: fadeIn 0.8s var(--ease-luxury);
+  animation: fadeIn 0.6s var(--ease-luxury);
 }
 
 /* ============================================================
-   GRADIENT TEXT
+   GRADIENT TEXT (Subtle, No Gold)
    ============================================================ */
 
-.text-gradient-gold {
-  background: linear-gradient(135deg, #C9A961 0%, #E5D4A8 50%, #C9A961 100%);
+.text-gradient-dark {
+  background: linear-gradient(135deg, #1D1D1F 0%, #2C2C2E 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.dark .text-gradient-dark {
+  background: linear-gradient(135deg, #F5F5F7 0%, #D2D2D7 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -588,16 +643,16 @@ main {
 }
 
 .text-shimmer {
-  background: linear-gradient(90deg, #0A0A0A 0%, #C9A961 50%, #0A0A0A 100%);
+  background: linear-gradient(90deg, #1D1D1F 0%, #6E6E73 50%, #1D1D1F 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: goldShimmer 3s linear infinite;
+  animation: shimmerText 3s linear infinite;
 }
 
 .dark .text-shimmer {
-  background: linear-gradient(90deg, #FAF8F4 0%, #C9A961 50%, #FAF8F4 100%);
+  background: linear-gradient(90deg, #F5F5F7 0%, #6E6E73 50%, #F5F5F7 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -605,25 +660,25 @@ main {
 }
 
 /* ============================================================
-   GOLD GLOW
+   SUBTLE GLOW (No Gold)
    ============================================================ */
 
-.glow-gold {
+.glow-subtle {
   position: relative;
 }
 
-.glow-gold::before {
+.glow-subtle::before {
   content: '';
   position: absolute;
   inset: -50%;
-  background: radial-gradient(circle, rgba(201, 169, 97, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(29, 29, 31, 0.08) 0%, transparent 70%);
   pointer-events: none;
   animation: glow 4s ease-in-out infinite;
   z-index: -1;
 }
 
 .glow-pulse {
-  animation: glowPulse 3s ease-in-out infinite;
+  animation: pulseRing 3s ease-in-out infinite;
 }
 
 /* ============================================================
@@ -653,7 +708,7 @@ img {
 }
 
 /* ============================================================
-   CUSTOM CURSOR (DESKTOP ONLY)
+   CUSTOM CURSOR (DESKTOP ONLY — No Gold)
    ============================================================ */
 
 @media (hover: hover) and (pointer: fine) {
@@ -669,9 +724,9 @@ img {
 
 .cursor-dot {
   position: fixed;
-  width: 8px;
-  height: 8px;
-  background: var(--color-gold);
+  width: 6px;
+  height: 6px;
+  background: var(--color-ink);
   border-radius: 50%;
   pointer-events: none;
   z-index: 9999;
@@ -686,7 +741,7 @@ img {
   position: fixed;
   width: 40px;
   height: 40px;
-  border: 1px solid var(--color-gold);
+  border: 1px solid var(--color-ink);
   border-radius: 50%;
   pointer-events: none;
   z-index: 9998;
@@ -697,9 +752,9 @@ img {
 }
 
 .cursor-ring.hover {
-  width: 60px;
-  height: 60px;
-  background: rgba(201, 169, 97, 0.1);
+  width: 56px;
+  height: 56px;
+  background: rgba(29, 29, 31, 0.06);
 }
 
 /* ============================================================
@@ -749,18 +804,22 @@ img {
 }
 
 /* ============================================================
-   GRADIENT BORDERS
+   BORDERS (Apple-Style)
    ============================================================ */
 
-.border-gradient-gold {
-  border: 1px solid transparent;
-  background: linear-gradient(var(--color-ivory), var(--color-ivory)) padding-box,
-    linear-gradient(135deg, #C9A961, #E5D4A8) border-box;
+.border-subtle {
+  border: 1px solid var(--color-line);
 }
 
-.dark .border-gradient-gold {
-  background: linear-gradient(#0A0A0A, #0A0A0A) padding-box,
-    linear-gradient(135deg, #C9A961, #E5D4A8) border-box;
+.border-gradient-dark {
+  border: 1px solid transparent;
+  background: linear-gradient(var(--color-ivory), var(--color-ivory)) padding-box,
+    linear-gradient(135deg, #1D1D1F, #6E6E73) border-box;
+}
+
+.dark .border-gradient-dark {
+  background: linear-gradient(#000000, #000000) padding-box,
+    linear-gradient(135deg, #F5F5F7, #6E6E73) border-box;
 }
 
 /* ============================================================
@@ -776,7 +835,7 @@ img {
   position: absolute;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.02;
+  opacity: 0.015;
   pointer-events: none;
   mix-blend-mode: overlay;
 }
@@ -902,8 +961,8 @@ img {
 }
 
 @keyframes statusPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5); }
-  50% { box-shadow: 0 0 0 4px rgba(74, 222, 128, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(46, 125, 50, 0); }
 }
 
 .typing-wave span:nth-child(1) {
@@ -923,7 +982,7 @@ img {
 
 .bubble-hover:hover {
   transform: translateY(-1px) scale(1.005);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .tick-slide {
@@ -947,7 +1006,7 @@ img {
 }
 
 .input-focus-glow:focus-within {
-  box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.15);
+  box-shadow: 0 0 0 3px rgba(29, 29, 31, 0.08);
 }
 
 .send-ready {
@@ -969,12 +1028,12 @@ img {
 }
 
 .chatbot-scroll::-webkit-scrollbar-thumb {
-  background: rgba(10, 10, 10, 0.12);
+  background: rgba(29, 29, 31, 0.12);
   border-radius: 4px;
 }
 
 .chatbot-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(10, 10, 10, 0.24);
+  background: rgba(29, 29, 31, 0.24);
 }
 
 .chatbot-scroll-smooth {
@@ -1005,6 +1064,274 @@ img {
 }
 
 /* ============================================================
+   ADMIN PANEL — APPLE-LEVEL DESIGN SYSTEM
+   ============================================================ */
+
+.admin-shell {
+  background: #FBFBFD;
+  color: #1D1D1F;
+  font-family: var(--font-body);
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark .admin-shell {
+  background: #000000;
+  color: #F5F5F7;
+}
+
+/* Admin Card */
+.admin-card {
+  background: #FFFFFF;
+  border: 1px solid #E5E5E7;
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .admin-card {
+  background: #1C1C1E;
+  border-color: #38383A;
+}
+
+.admin-card:hover {
+  border-color: #D2D2D7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.dark .admin-card:hover {
+  border-color: #48484A;
+}
+
+/* Admin Buttons */
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+}
+
+.admin-btn-primary {
+  background: #1D1D1F;
+  color: #FFFFFF;
+  border-color: #1D1D1F;
+}
+
+.admin-btn-primary:hover {
+  background: #000000;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.admin-btn-primary:active {
+  transform: translateY(0);
+}
+
+.admin-btn-secondary {
+  background: #FFFFFF;
+  color: #1D1D1F;
+  border-color: #D2D2D7;
+}
+
+.admin-btn-secondary:hover {
+  background: #F5F5F7;
+  border-color: #86868B;
+}
+
+.admin-btn-ghost {
+  background: transparent;
+  color: #6E6E73;
+}
+
+.admin-btn-ghost:hover {
+  background: #F5F5F7;
+  color: #1D1D1F;
+}
+
+.admin-btn-danger {
+  background: transparent;
+  color: #C62828;
+  border-color: #D2D2D7;
+}
+
+.admin-btn-danger:hover {
+  background: #FFEBEE;
+  border-color: #C62828;
+}
+
+.dark .admin-btn-secondary {
+  background: #1C1C1E;
+  color: #F5F5F7;
+  border-color: #48484A;
+}
+
+.dark .admin-btn-secondary:hover {
+  background: #2C2C2E;
+}
+
+/* Admin Inputs */
+.admin-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: #FFFFFF;
+  border: 1px solid #D2D2D7;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1D1D1F;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  font-family: var(--font-body);
+}
+
+.admin-input:focus {
+  border-color: #1D1D1F;
+  box-shadow: 0 0 0 4px rgba(29, 29, 31, 0.08);
+}
+
+.admin-input::placeholder {
+  color: #86868B;
+}
+
+.dark .admin-input {
+  background: #1C1C1E;
+  border-color: #48484A;
+  color: #F5F5F7;
+}
+
+.dark .admin-input:focus {
+  border-color: #F5F5F7;
+  box-shadow: 0 0 0 4px rgba(245, 245, 247, 0.08);
+}
+
+/* Admin Label */
+.admin-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #6E6E73;
+  margin-bottom: 8px;
+}
+
+/* Admin Badges */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.admin-badge-neutral {
+  background: #F5F5F7;
+  color: #6E6E73;
+}
+
+.admin-badge-dark {
+  background: #1D1D1F;
+  color: #FFFFFF;
+}
+
+.admin-badge-success {
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+
+.admin-badge-warning {
+  background: #FFF3E0;
+  color: #E65100;
+}
+
+.admin-badge-danger {
+  background: #FFEBEE;
+  color: #C62828;
+}
+
+/* Admin Sidebar */
+.admin-sidebar {
+  background: #FFFFFF;
+  border-right: 1px solid #E5E5E7;
+}
+
+.dark .admin-sidebar {
+  background: #1C1C1E;
+  border-right-color: #38383A;
+}
+
+/* Admin Topbar */
+.admin-topbar {
+  background: rgba(251, 251, 253, 0.72);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border-bottom: 1px solid #E5E5E7;
+}
+
+.dark .admin-topbar {
+  background: rgba(0, 0, 0, 0.72);
+  border-bottom-color: #38383A;
+}
+
+/* Admin Scrollbar */
+.admin-shell ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.admin-shell ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-shell ::-webkit-scrollbar-thumb {
+  background: #D2D2D7;
+  border-radius: 4px;
+}
+
+.admin-shell ::-webkit-scrollbar-thumb:hover {
+  background: #86868B;
+}
+
+.dark .admin-shell ::-webkit-scrollbar-thumb {
+  background: #48484A;
+}
+
+.dark .admin-shell ::-webkit-scrollbar-thumb:hover {
+  background: #6E6E73;
+}
+
+/* Admin Animations */
+@keyframes adminFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.admin-fade-in {
+  animation: adminFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes adminScaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.admin-scale-in {
+  animation: adminScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ============================================================
    CUSTOM UTILITIES
    ============================================================ */
 
@@ -1029,7 +1356,7 @@ img {
 }
 
 /* ============================================================
-   MOBILE OPTIMIZATIONS (SAFE VERSION — NO GLOBAL a TAG)
+   MOBILE OPTIMIZATIONS
    ============================================================ */
 
 @media (hover: none) {
@@ -1052,7 +1379,6 @@ img {
   }
 }
 
-/* Tap targets — buttons only (NOT links) */
 @media (max-width: 768px) {
   button,
   [role="button"] {
@@ -1060,14 +1386,12 @@ img {
     min-width: 44px;
   }
 
-  /* Prevent zoom on input focus */
   input,
   textarea,
   select {
     font-size: 16px;
   }
 
-  /* Better touch feedback */
   button:active,
   a:active {
     transform: scale(0.97);
