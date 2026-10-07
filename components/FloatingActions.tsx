@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   Phone,
   Mail,
+  Sparkles,
 } from "lucide-react";
 
 // ==================== TYPES ====================
@@ -23,7 +24,7 @@ interface Props {
   hasUnreadAI?: boolean;
 }
 
-type ActionType = "shop" | "support" | "whatsapp" | "call" | "email";
+type ActionType = "support" | "whatsapp" | "call" | "email";
 
 interface ActionItem {
   id: string;
@@ -36,7 +37,11 @@ interface ActionItem {
   action: ActionType;
   href?: string;
   badge?: boolean;
-  shortcut?: string;
+}
+
+interface Position {
+  x: number;
+  y: number;
 }
 
 // ==================== CONSTANTS ====================
@@ -49,6 +54,10 @@ const HAPTIC_LIGHT = 8;
 const HAPTIC_TOGGLE = [12, 20, 12];
 const OPEN_DELAY = 1200;
 const OUTSIDE_CLICK_DELAY = 100;
+const POSITION_KEY = "zaem_shop_assistant_pos";
+const DRAG_THRESHOLD = 8;
+const SNAP_MARGIN = 16;
+const DEFAULT_BOTTOM_OFFSET = 100;
 
 // ==================== MAIN COMPONENT ====================
 export default function FloatingActions({
@@ -63,9 +72,16 @@ export default function FloatingActions({
   const [isMobile, setIsMobile] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
 
+  // Shop Assistant drag state
+  const [shopPos, setShopPos] = useState<Position | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const firstItemRef = useRef<HTMLAnchorElement | HTMLButtonElement | null>(null);
+  const shopRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ x: number; y: number; posX: number; posY: number } | null>(null);
+  const dragMovedRef = useRef(false);
 
   // ==================== DETECT MOBILE + REDUCED MOTION ====================
   useEffect(() => {
@@ -93,6 +109,39 @@ export default function FloatingActions({
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), OPEN_DELAY);
     return () => clearTimeout(timer);
+  }, []);
+
+  // ==================== LOAD SAVED POSITION ====================
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(POSITION_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (
+          typeof parsed?.x === "number" &&
+          typeof parsed?.y === "number" &&
+          parsed.x >= 0 &&
+          parsed.y >= 0 &&
+          parsed.x <= window.innerWidth &&
+          parsed.y <= window.innerHeight
+        ) {
+          setShopPos(parsed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // ==================== SAVE POSITION ====================
+  const savePosition = useCallback((pos: Position) => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(POSITION_KEY, JSON.stringify(pos));
+    } catch {
+      // ignore
+    }
   }, []);
 
   // ==================== LOCK BODY SCROLL (mobile) ====================
@@ -140,39 +189,154 @@ export default function FloatingActions({
     };
   }, [isOpen]);
 
-  // ==================== KEYBOARD SHORTCUTS ====================
-  useEffect(() => {
-    const handleShortcut = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + K → Shop AI
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        hapticFeedback(HAPTIC_LIGHT);
-        setIsOpen(false);
-        onOpenShopAI();
-      }
-      // Ctrl/Cmd + / → Support AI
-      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
-        e.preventDefault();
-        hapticFeedback(HAPTIC_LIGHT);
-        setIsOpen(false);
-        onOpenSupportAI();
-      }
-    };
-    document.addEventListener("keydown", handleShortcut);
-    return () => document.removeEventListener("keydown", handleShortcut);
-  }, [onOpenShopAI, onOpenSupportAI]);
-
   // ==================== HAPTIC FEEDBACK ====================
-  const hapticFeedback = useCallback((pattern: number | number[] = 10) => {
-    if (typeof window === "undefined") return;
-    if (!("vibrate" in navigator)) return;
-    if (reducedMotion) return;
-    try {
-      navigator.vibrate(pattern);
-    } catch {
-      // Ignore
+  const hapticFeedback = useCallback(
+    (pattern: number | number[] = 10) => {
+      if (typeof window === "undefined") return;
+      if (!("vibrate" in navigator)) return;
+      if (reducedMotion) return;
+      try {
+        navigator.vibrate(pattern);
+      } catch {
+        // ignore
+      }
+    },
+    [reducedMotion]
+  );
+
+  // ==================== SHOP ASSISTANT - DRAG HANDLERS ====================
+  const handleShopDragStart = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!shopRef.current) return;
+      const rect = shopRef.current.getBoundingClientRect();
+      dragStartRef.current = {
+        x: clientX,
+        y: clientY,
+        posX: rect.left,
+        posY: rect.top,
+      };
+      dragMovedRef.current = false;
+      setIsDragging(true);
+      hapticFeedback(5);
+    },
+    [hapticFeedback]
+  );
+
+  const handleShopDragMove = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!dragStartRef.current) return;
+
+      const dx = clientX - dragStartRef.current.x;
+      const dy = clientY - dragStartRef.current.y;
+
+      if (
+        !dragMovedRef.current &&
+        Math.hypot(dx, dy) > DRAG_THRESHOLD
+      ) {
+        dragMovedRef.current = true;
+        setHasDragged(true);
+      }
+
+      if (!dragMovedRef.current) return;
+
+      const el = shopRef.current;
+      if (!el) return;
+
+      const rect = el.getBoundingClientRect();
+      const newX = dragStartRef.current.posX + dx;
+      const newY = dragStartRef.current.posY + dy;
+
+      const maxX = window.innerWidth - rect.width - SNAP_MARGIN;
+      const maxY = window.innerHeight - rect.height - SNAP_MARGIN;
+
+      const clampedX = Math.max(SNAP_MARGIN, Math.min(newX, maxX));
+      const clampedY = Math.max(SNAP_MARGIN, Math.min(newY, maxY));
+
+      setShopPos({ x: clampedX, y: clampedY });
+    },
+    []
+  );
+
+  const handleShopDragEnd = useCallback(() => {
+    if (!dragStartRef.current) return;
+    dragStartRef.current = null;
+    setIsDragging(false);
+
+    // If not dragged → treat as click (open AI)
+    if (!dragMovedRef.current) {
+      hapticFeedback(HAPTIC_LIGHT);
+      onOpenShopAI();
+      setHasDragged(false);
+      return;
     }
-  }, [reducedMotion]);
+
+    // Snap to nearest edge (left or right)
+    setShopPos((prev) => {
+      if (!prev || !shopRef.current) return prev;
+      const rect = shopRef.current.getBoundingClientRect();
+      const centerX = prev.x + rect.width / 2;
+      const screenCenter = window.innerWidth / 2;
+      const isLeftSide = centerX < screenCenter;
+
+      const snappedX = isLeftSide
+        ? SNAP_MARGIN
+        : window.innerWidth - rect.width - SNAP_MARGIN;
+
+      const newPos = { x: snappedX, y: prev.y };
+      savePosition(newPos);
+      hapticFeedback([5, 30, 5]);
+      return newPos;
+    });
+
+    setTimeout(() => setHasDragged(false), 250);
+  }, [onOpenShopAI, hapticFeedback, savePosition]);
+
+  // ==================== SHOP ASSISTANT - MOUSE EVENTS ====================
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      e.preventDefault();
+      handleShopDragMove(e.clientX, e.clientY);
+    };
+
+    const handleMouseUp = () => {
+      handleShopDragEnd();
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, handleShopDragMove, handleShopDragEnd]);
+
+  // ==================== SHOP ASSISTANT - TOUCH EVENTS ====================
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      handleShopDragMove(e.touches[0].clientX, e.touches[0].clientY);
+    };
+
+    const handleTouchEnd = () => {
+      handleShopDragEnd();
+    };
+
+    document.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
+    document.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [isDragging, handleShopDragMove, handleShopDragEnd]);
 
   // ==================== HANDLE ACTION ====================
   const handleAction = useCallback(
@@ -181,11 +345,10 @@ export default function FloatingActions({
       setIsOpen(false);
 
       setTimeout(() => {
-        if (action.action === "shop") onOpenShopAI();
         if (action.action === "support") onOpenSupportAI();
       }, 200);
     },
-    [onOpenShopAI, onOpenSupportAI, hapticFeedback]
+    [onOpenSupportAI, hapticFeedback]
   );
 
   // ==================== TOGGLE ====================
@@ -194,27 +357,9 @@ export default function FloatingActions({
     setIsOpen((prev) => !prev);
   }, [isOpen, hapticFeedback]);
 
-  // ==================== FOCUS MANAGEMENT ====================
-  useEffect(() => {
-    if (isOpen && firstItemRef.current) {
-      setTimeout(() => firstItemRef.current?.focus(), 300);
-    }
-  }, [isOpen]);
-
   // ==================== ACTION ITEMS ====================
   const actionItems: ActionItem[] = useMemo(
     () => [
-      {
-        id: "shop",
-        label: "Shop Assistant",
-        icon: <ShoppingBag className="w-5 h-5" strokeWidth={1.9} />,
-        bgColor: "bg-white dark:bg-[#1C1C1E]",
-        textColor: "text-[#1D1D1F] dark:text-white",
-        iconBgColor: "bg-[#1D1D1F] dark:bg-white",
-        iconColor: "text-white dark:text-[#1D1D1F]",
-        action: "shop",
-        shortcut: "⌘K",
-      },
       {
         id: "support",
         label: "Support",
@@ -225,7 +370,6 @@ export default function FloatingActions({
         iconColor: "text-[#1D1D1F] dark:text-white",
         action: "support",
         badge: hasUnreadAI,
-        shortcut: "⌘/",
       },
       {
         id: "whatsapp",
@@ -264,6 +408,24 @@ export default function FloatingActions({
     [hasUnreadAI]
   );
 
+  // ==================== SHOP ASSISTANT STYLE ====================
+  const shopStyle: React.CSSProperties = shopPos
+    ? {
+        position: "fixed",
+        left: `${shopPos.x}px`,
+        top: `${shopPos.y}px`,
+        touchAction: "none",
+        transition: isDragging
+          ? "none"
+          : "left 0.3s cubic-bezier(0.34,1.56,0.64,1), top 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+      }
+    : {
+        position: "fixed",
+        right: "16px",
+        bottom: `${DEFAULT_BOTTOM_OFFSET}px`,
+        touchAction: "none",
+      };
+
   // ==================== RENDER ====================
   return (
     <>
@@ -276,7 +438,70 @@ export default function FloatingActions({
         />
       )}
 
-      {/* ==================== CONTAINER ==================== */}
+      {/* ==================== SHOP ASSISTANT (DRAGGABLE) ==================== */}
+      <div
+        ref={shopRef}
+        data-shop-assistant
+        style={shopStyle}
+        className={`z-[96] select-none transition-opacity duration-700 ${
+          visible ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            handleShopDragStart(e.clientX, e.clientY);
+          }}
+          onTouchStart={(e) => {
+            if (e.touches.length === 1) {
+              handleShopDragStart(e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
+          onClick={(e) => {
+            if (hasDragged) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+          aria-label="Open Shop Assistant (drag to move)"
+          className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] shadow-2xl border border-white/10 dark:border-black/10 backdrop-blur-md transition-all duration-300 ${
+            isDragging
+              ? "cursor-grabbing scale-105 shadow-2xl"
+              : "cursor-grab hover:scale-105 active:scale-95"
+          }`}
+        >
+          {/* Icon circle */}
+          <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1D1D1F] flex items-center justify-center shrink-0">
+            <Sparkles
+              className="w-4 h-4 text-[#1D1D1F] dark:text-white"
+              strokeWidth={2}
+            />
+          </div>
+
+          {/* Text */}
+          <span className="text-[13px] font-body font-medium whitespace-nowrap pr-1">
+            Shop Assistant
+          </span>
+
+          {/* Drag hint dots */}
+          <div className="flex flex-col gap-0.5 pr-1 opacity-40 group-hover:opacity-70 transition-opacity">
+            <div className="flex gap-0.5">
+              <div className="w-0.5 h-0.5 rounded-full bg-current" />
+              <div className="w-0.5 h-0.5 rounded-full bg-current" />
+            </div>
+            <div className="flex gap-0.5">
+              <div className="w-0.5 h-0.5 rounded-full bg-current" />
+              <div className="w-0.5 h-0.5 rounded-full bg-current" />
+            </div>
+            <div className="flex gap-0.5">
+              <div className="w-0.5 h-0.5 rounded-full bg-current" />
+              <div className="w-0.5 h-0.5 rounded-full bg-current" />
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* ==================== CONTAINER (MENU) ==================== */}
       <div
         ref={containerRef}
         data-floating-actions
@@ -298,14 +523,12 @@ export default function FloatingActions({
           {actionItems.map((item, index) => {
             const delay = isOpen ? `${index * 60}ms` : "0ms";
             const isHovered = hoveredItem === item.id;
-            const isFirst = index === 0;
 
             // ============ LINK ITEM ============
             if (item.href) {
               return (
                 <a
                   key={item.id}
-                  ref={isFirst ? (firstItemRef as any) : undefined}
                   href={item.href}
                   target={item.action === "whatsapp" ? "_blank" : undefined}
                   rel={
@@ -343,7 +566,6 @@ export default function FloatingActions({
             return (
               <button
                 key={item.id}
-                ref={isFirst ? (firstItemRef as any) : undefined}
                 onClick={() => handleAction(item)}
                 onMouseEnter={() => setHoveredItem(item.id)}
                 onMouseLeave={() => setHoveredItem(null)}
@@ -385,7 +607,6 @@ export default function FloatingActions({
           aria-expanded={isOpen}
           aria-haspopup="menu"
         >
-          {/* Rotating X icon */}
           <X
             className={`absolute w-6 h-6 md:w-7 md:h-7 transition-all duration-300 ${
               isOpen
@@ -395,7 +616,6 @@ export default function FloatingActions({
             strokeWidth={2.2}
           />
 
-          {/* Rotating message icon */}
           <div
             className={`absolute w-full h-full flex items-center justify-center transition-all duration-300 ${
               isOpen
@@ -403,10 +623,12 @@ export default function FloatingActions({
                 : "opacity-100 rotate-0 scale-100"
             }`}
           >
-            <MessageCircle className="w-6 h-6 md:w-7 md:h-7" strokeWidth={1.9} />
+            <MessageCircle
+              className="w-6 h-6 md:w-7 md:h-7"
+              strokeWidth={1.9}
+            />
           </div>
 
-          {/* Double-ring pulse animation (only when closed) */}
           {!isOpen && visible && !reducedMotion && (
             <>
               <span
@@ -420,21 +642,12 @@ export default function FloatingActions({
             </>
           )}
 
-          {/* Unread badge */}
           {hasUnreadAI && !isOpen && (
             <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-medium text-white border-2 border-white dark:border-[#1C1C1E] shadow-md">
               1
             </span>
           )}
         </button>
-
-        {/* ==================== TOOLTIP (Desktop) ==================== */}
-        {!isOpen && visible && (
-          <div className="hidden md:block absolute bottom-full mb-3 right-0 bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs px-3 py-1.5 rounded-full whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
-            Need help?
-            <div className="absolute top-full right-6 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-[#1D1D1F] dark:border-t-white" />
-          </div>
-        )}
       </div>
     </>
   );
