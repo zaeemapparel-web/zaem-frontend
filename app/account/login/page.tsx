@@ -282,9 +282,10 @@ export default function LoginPage() {
               </label>
               <div className="relative">
                 <Mail
-                  className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
-                  strokeWidth={2}
-                />
+  className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+  style={{ transform: 'translateY(-50%)' }}
+  strokeWidth={2}
+/>
                 <input
                   type="email"
                   value={email}
@@ -313,9 +314,10 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <Lock
-                  className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
-                  strokeWidth={2}
-                />
+  className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+  style={{ transform: 'translateY(-50%)' }}
+  strokeWidth={2}
+/>
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}

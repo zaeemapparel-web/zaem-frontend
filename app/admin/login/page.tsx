@@ -31,7 +31,6 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("");
   const [remember, setRemember] = useState(false);
 
-  // ==================== SUBMIT ====================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -47,7 +46,6 @@ export default function AdminLoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        // Role check
         const role = data.data.user.role;
         if (role !== "ADMIN" && role !== "MANAGER" && role !== "STAFF") {
           setError("Access denied. Admin privileges required.");
@@ -77,11 +75,9 @@ export default function AdminLoginPage() {
     }
   };
 
-  // ==================== RENDER ====================
   return (
     <main className="min-h-screen flex items-stretch bg-[#0A0A0A] relative overflow-hidden">
 
-      {/* ==================== BACKGROUND PATTERN ==================== */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
         <div
           className="absolute inset-0"
@@ -94,14 +90,11 @@ export default function AdminLoginPage() {
 
       {/* ==================== LEFT SIDE (Branding) ==================== */}
       <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 bg-gradient-to-br from-[#0A0A0A] via-[#1D1D1F] to-[#0A0A0A]">
-        {/* Decorative glow */}
         <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-[#1D1D1F] rounded-full blur-[120px] opacity-40" />
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#2C2C2E] rounded-full blur-[100px] opacity-30" />
 
-        {/* Content */}
         <div className="relative z-10 max-w-md text-center">
 
-          {/* Logo */}
           <div className="mb-12">
             <h1 className="font-display text-6xl md:text-7xl text-white tracking-[0.2em] mb-4">
               ZAEM
@@ -111,26 +104,22 @@ export default function AdminLoginPage() {
             </p>
           </div>
 
-          {/* Divider */}
           <div className="flex items-center justify-center gap-4 mb-10">
             <div className="h-px w-12 bg-[#38383A]" />
             <Sparkle className="w-4 h-4 text-[#6E6E73]" strokeWidth={1.5} />
             <div className="h-px w-12 bg-[#38383A]" />
           </div>
 
-          {/* Heading */}
           <h2 className="font-display text-3xl md:text-4xl text-white mb-4 leading-tight">
             Style.{" "}
             <span className="italic">Redefined.</span>
           </h2>
 
-          {/* Description */}
           <p className="text-[#86868B] text-[13px] leading-relaxed mb-12 max-w-sm mx-auto">
             Manage your premium store with an elegant dashboard built for
             the modern e-commerce experience.
           </p>
 
-          {/* Feature List */}
           <div className="space-y-3 text-left max-w-xs mx-auto">
             {[
               "Complete store management",
@@ -153,7 +142,6 @@ export default function AdminLoginPage() {
             ))}
           </div>
 
-          {/* Bottom */}
           <p className="text-[10px] tracking-[0.3em] uppercase text-[#48484A] mt-16">
             Admin Panel v1.0
           </p>
@@ -165,7 +153,6 @@ export default function AdminLoginPage() {
 
         <div className="w-full max-w-md">
 
-          {/* ============ MOBILE LOGO ============ */}
           <div className="lg:hidden text-center mb-10">
             <h1 className="font-display text-4xl md:text-5xl text-[#1D1D1F] dark:text-white tracking-[0.2em] mb-2">
               ZAEM
@@ -175,7 +162,6 @@ export default function AdminLoginPage() {
             </p>
           </div>
 
-          {/* ============ HEADER ============ */}
           <div className="mb-8">
             <p className="text-[10px] tracking-[0.3em] uppercase text-[#86868B] font-medium mb-3 flex items-center gap-2">
               <Sparkles className="w-3 h-3" strokeWidth={2} />
@@ -189,9 +175,8 @@ export default function AdminLoginPage() {
             </p>
           </div>
 
-          {/* ============ ERROR ============ */}
           {error && (
-            <div className="mb-6 p-4 bg-[#FFEBEE] border-l-2 border-[#C62828] text-[#C62828] text-[13px] rounded-r-lg flex items-start gap-3 admin-scale-in">
+            <div className="mb-6 p-4 bg-[#FFEBEE] border-l-2 border-[#C62828] text-[#C62828] text-[13px] rounded-r-lg flex items-start gap-3">
               <AlertCircle
                 className="w-4 h-4 shrink-0 mt-0.5"
                 strokeWidth={2}
@@ -200,15 +185,14 @@ export default function AdminLoginPage() {
             </div>
           )}
 
-          {/* ============ FORM ============ */}
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* Email */}
+            {/* ============ EMAIL ============ */}
             <div>
               <label className="admin-label">Email Address</label>
               <div className="relative">
                 <Mail
-                  className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+                  className="w-4 h-4 absolute left-3.5 top-[22px] text-[#86868B] pointer-events-none"
                   strokeWidth={2}
                 />
                 <input
@@ -224,7 +208,7 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            {/* Password */}
+            {/* ============ PASSWORD ============ */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="admin-label !mb-0">Password</label>
@@ -242,7 +226,7 @@ export default function AdminLoginPage() {
               </div>
               <div className="relative">
                 <Lock
-                  className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+                  className="w-4 h-4 absolute left-3.5 top-[22px] text-[#86868B] pointer-events-none"
                   strokeWidth={2}
                 />
                 <input
@@ -258,7 +242,7 @@ export default function AdminLoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-[#F5F5F7] dark:hover:bg-[#1C1C1E] transition-colors"
+                  className="absolute right-2 top-[13px] p-1.5 rounded-md hover:bg-[#F5F5F7] dark:hover:bg-[#1C1C1E] transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -276,7 +260,7 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            {/* Remember Me */}
+            {/* ============ REMEMBER ============ */}
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <button
                 type="button"
@@ -299,7 +283,7 @@ export default function AdminLoginPage() {
               </span>
             </label>
 
-            {/* Submit */}
+            {/* ============ SUBMIT ============ */}
             <button
               type="submit"
               disabled={loading || !email || !password}
@@ -323,7 +307,6 @@ export default function AdminLoginPage() {
 
           </form>
 
-          {/* ============ FOOTER ============ */}
           <div className="mt-8 pt-6 border-t border-[#E5E5E7] dark:border-[#38383A]">
             <div className="flex items-center justify-center gap-2 text-[11px] text-[#86868B]">
               <Shield className="w-3 h-3" strokeWidth={2} />
