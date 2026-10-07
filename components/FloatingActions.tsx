@@ -24,7 +24,7 @@ interface Props {
   hasUnreadAI?: boolean;
 }
 
-type ActionType = "support" | "whatsapp" | "call" | "email";
+type ActionType = "shop" | "support" | "whatsapp" | "call" | "email";
 
 interface ActionItem {
   id: string;
@@ -55,7 +55,6 @@ const HAPTIC_TOGGLE = [12, 20, 12];
 const OPEN_DELAY = 1200;
 const OUTSIDE_CLICK_DELAY = 100;
 const POSITION_KEY = "zaem_shop_assistant_pos";
-const HIDDEN_KEY = "zaem_shop_assistant_hidden";
 const DRAG_THRESHOLD = 8;
 const SNAP_MARGIN = 16;
 const DEFAULT_BOTTOM_OFFSET = 100;
@@ -77,9 +76,6 @@ export default function FloatingActions({
   const [shopPos, setShopPos] = useState<Position | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [hasDragged, setHasDragged] = useState(false);
-
-  // Shop Assistant visibility
-  const [shopVisible, setShopVisible] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -113,19 +109,6 @@ export default function FloatingActions({
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), OPEN_DELAY);
     return () => clearTimeout(timer);
-  }, []);
-
-  // ==================== LOAD SHOP ASSISTANT VISIBILITY ====================
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const hidden = localStorage.getItem(HIDDEN_KEY);
-      if (hidden === "true") {
-        setShopVisible(false);
-      }
-    } catch {
-      // ignore
-    }
   }, []);
 
   // ==================== LOAD SAVED POSITION ====================
@@ -180,7 +163,10 @@ export default function FloatingActions({
 
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest("[data-floating-actions]")) {
+      if (
+        !target.closest("[data-floating-actions]") &&
+        !target.closest("[data-shop-assistant]")
+      ) {
         setIsOpen(false);
       }
     };
@@ -246,10 +232,7 @@ export default function FloatingActions({
       const dx = clientX - dragStartRef.current.x;
       const dy = clientY - dragStartRef.current.y;
 
-      if (
-        !dragMovedRef.current &&
-        Math.hypot(dx, dy) > DRAG_THRESHOLD
-      ) {
+      if (!dragMovedRef.current && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
         dragMovedRef.current = true;
         setHasDragged(true);
       }
@@ -308,22 +291,6 @@ export default function FloatingActions({
     setTimeout(() => setHasDragged(false), 250);
   }, [onOpenShopAI, hapticFeedback, savePosition]);
 
-  // ==================== SHOP ASSISTANT - CLOSE ====================
-  const handleShopClose = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      hapticFeedback(HAPTIC_LIGHT);
-      setShopVisible(false);
-      try {
-        localStorage.setItem(HIDDEN_KEY, "true");
-      } catch {
-        // ignore
-      }
-    },
-    [hapticFeedback]
-  );
-
   // ==================== SHOP ASSISTANT - MOUSE EVENTS ====================
   useEffect(() => {
     if (!isDragging) return;
@@ -378,10 +345,11 @@ export default function FloatingActions({
       setIsOpen(false);
 
       setTimeout(() => {
+        if (action.action === "shop") onOpenShopAI();
         if (action.action === "support") onOpenSupportAI();
       }, 200);
     },
-    [onOpenSupportAI, hapticFeedback]
+    [onOpenShopAI, onOpenSupportAI, hapticFeedback]
   );
 
   // ==================== TOGGLE ====================
@@ -442,22 +410,43 @@ export default function FloatingActions({
   );
 
   // ==================== SHOP ASSISTANT STYLE ====================
-  const shopStyle: React.CSSProperties = shopPos
-    ? {
+  // When menu open → move to align above container (bottom-right)
+  // When menu closed → use saved/default position
+  const shopStyle: React.CSSProperties = useMemo(() => {
+    // When menu is open, align Shop Assistant with the container (as top item)
+    if (isOpen) {
+      return {
+        position: "fixed",
+        right: "16px",
+        // Adjust this value based on container bottom + items height
+        bottom: isMobile ? "260px" : "300px",
+        touchAction: "none",
+        transition:
+          "right 0.5s cubic-bezier(0.34,1.56,0.64,1), bottom 0.5s cubic-bezier(0.34,1.56,0.64,1)",
+        zIndex: 97,
+      };
+    }
+
+    // When menu closed → use saved position or default
+    if (shopPos) {
+      return {
         position: "fixed",
         left: `${shopPos.x}px`,
         top: `${shopPos.y}px`,
         touchAction: "none",
         transition: isDragging
           ? "none"
-          : "left 0.3s cubic-bezier(0.34,1.56,0.64,1), top 0.3s cubic-bezier(0.34,1.56,0.64,1)",
-      }
-    : {
-        position: "fixed",
-        right: "16px",
-        bottom: `${DEFAULT_BOTTOM_OFFSET}px`,
-        touchAction: "none",
+          : "left 0.5s cubic-bezier(0.34,1.56,0.64,1), top 0.5s cubic-bezier(0.34,1.56,0.64,1)",
       };
+    }
+
+    return {
+      position: "fixed",
+      right: "16px",
+      bottom: `${DEFAULT_BOTTOM_OFFSET}px`,
+      touchAction: "none",
+    };
+  }, [isOpen, shopPos, isDragging, isMobile]);
 
   // ==================== RENDER ====================
   return (
@@ -471,86 +460,74 @@ export default function FloatingActions({
         />
       )}
 
-      {/* ==================== SHOP ASSISTANT (DRAGGABLE + CLOSABLE) ==================== */}
-      {shopVisible && (
-        <div
-          ref={shopRef}
-          data-shop-assistant
-          style={shopStyle}
-          className={`z-[96] select-none transition-opacity duration-700 ${
-            visible ? "opacity-100" : "opacity-0 pointer-events-none"
+      {/* ==================== SHOP ASSISTANT ==================== */}
+      <div
+        ref={shopRef}
+        data-shop-assistant
+        style={shopStyle}
+        className={`z-[97] select-none transition-opacity duration-700 ${
+          visible ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <button
+          onMouseDown={(e) => {
+            if (isOpen) return; // Disable drag when menu open
+            e.preventDefault();
+            handleShopDragStart(e.clientX, e.clientY);
+          }}
+          onTouchStart={(e) => {
+            if (isOpen) return; // Disable drag when menu open
+            if (e.touches.length === 1) {
+              handleShopDragStart(e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
+          onClick={(e) => {
+            if (hasDragged) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+          aria-label="Open Shop Assistant (drag to move)"
+          className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] shadow-2xl border border-white/10 dark:border-black/10 backdrop-blur-md transition-all duration-300 ${
+            isOpen
+              ? "cursor-pointer"
+              : isDragging
+              ? "cursor-grabbing scale-105 shadow-2xl"
+              : "cursor-grab hover:scale-105 active:scale-95"
           }`}
         >
-          <div className="relative">
-            {/* Main Shop Assistant Button */}
-            <button
-              onMouseDown={(e) => {
-                e.preventDefault();
-                handleShopDragStart(e.clientX, e.clientY);
-              }}
-              onTouchStart={(e) => {
-                if (e.touches.length === 1) {
-                  handleShopDragStart(e.touches[0].clientX, e.touches[0].clientY);
-                }
-              }}
-              onClick={(e) => {
-                if (hasDragged) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }
-              }}
-              aria-label="Open Shop Assistant (drag to move)"
-              className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] shadow-2xl border border-white/10 dark:border-black/10 backdrop-blur-md transition-all duration-300 ${
-                isDragging
-                  ? "cursor-grabbing scale-105 shadow-2xl"
-                  : "cursor-grab hover:scale-105 active:scale-95"
-              }`}
-            >
-              {/* Icon circle */}
-              <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1D1D1F] flex items-center justify-center shrink-0">
-                <Sparkles
-                  className="w-4 h-4 text-[#1D1D1F] dark:text-white"
-                  strokeWidth={2}
-                />
-              </div>
-
-              {/* Text */}
-              <span className="text-[13px] font-body font-medium whitespace-nowrap pr-1">
-                Shop Assistant
-              </span>
-
-              {/* Drag hint dots */}
-              <div className="flex flex-col gap-0.5 pr-1 opacity-40 group-hover:opacity-70 transition-opacity">
-                <div className="flex gap-0.5">
-                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
-                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
-                </div>
-                <div className="flex gap-0.5">
-                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
-                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
-                </div>
-                <div className="flex gap-0.5">
-                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
-                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
-                </div>
-              </div>
-            </button>
-
-            {/* Close (X) Button - Top Right */}
-            <button
-              onClick={handleShopClose}
-              onTouchStart={handleShopClose}
-              className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-white dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-full flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform duration-200 z-10"
-              aria-label="Hide Shop Assistant"
-            >
-              <X
-                className="w-3 h-3 text-[#1D1D1F] dark:text-white"
-                strokeWidth={2.5}
-              />
-            </button>
+          {/* Icon circle */}
+          <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1D1D1F] flex items-center justify-center shrink-0">
+            <Sparkles
+              className="w-4 h-4 text-[#1D1D1F] dark:text-white"
+              strokeWidth={2}
+            />
           </div>
-        </div>
-      )}
+
+          {/* Text */}
+          <span className="text-[13px] font-body font-medium whitespace-nowrap pr-1">
+            Shop Assistant
+          </span>
+
+          {/* Drag hint dots - hidden when menu open */}
+          {!isOpen && (
+            <div className="flex flex-col gap-0.5 pr-1 opacity-40 group-hover:opacity-70 transition-opacity">
+              <div className="flex gap-0.5">
+                <div className="w-0.5 h-0.5 rounded-full bg-current" />
+                <div className="w-0.5 h-0.5 rounded-full bg-current" />
+              </div>
+              <div className="flex gap-0.5">
+                <div className="w-0.5 h-0.5 rounded-full bg-current" />
+                <div className="w-0.5 h-0.5 rounded-full bg-current" />
+              </div>
+              <div className="flex gap-0.5">
+                <div className="w-0.5 h-0.5 rounded-full bg-current" />
+                <div className="w-0.5 h-0.5 rounded-full bg-current" />
+              </div>
+            </div>
+          )}
+        </button>
+      </div>
 
       {/* ==================== CONTAINER (MENU) ==================== */}
       <div
@@ -571,8 +548,40 @@ export default function FloatingActions({
           role="menu"
           aria-label="Contact actions"
         >
+          {/* When menu open → add Shop Assistant as the FIRST item */}
+          {isOpen && (
+            <button
+              onClick={() => {
+                hapticFeedback(HAPTIC_LIGHT);
+                setIsOpen(false);
+                setTimeout(() => onOpenShopAI(), 200);
+              }}
+              onMouseEnter={() => setHoveredItem("shop")}
+              onMouseLeave={() => setHoveredItem(null)}
+              style={{ transitionDelay: "0ms" }}
+              className={`group flex items-center gap-3 pl-4 pr-3 py-2.5 bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] rounded-full shadow-lg hover:shadow-2xl active:scale-95 transition-all duration-300 border border-black/5 dark:border-white/10 backdrop-blur-sm`}
+              aria-label="Shop Assistant"
+              role="menuitem"
+            >
+              <span
+                className={`text-sm font-body tracking-wide whitespace-nowrap transition-all duration-300 ${
+                  hoveredItem === "shop" ? "opacity-100" : "opacity-90"
+                }`}
+              >
+                Shop Assistant
+              </span>
+              <div
+                className={`w-10 h-10 bg-white dark:bg-[#1C1C1E] text-[#1D1D1F] dark:text-white rounded-full flex items-center justify-center relative transition-transform duration-300 ${
+                  hoveredItem === "shop" ? "scale-110" : "scale-100"
+                }`}
+              >
+                <Sparkles className="w-5 h-5" strokeWidth={1.9} />
+              </div>
+            </button>
+          )}
+
           {actionItems.map((item, index) => {
-            const delay = isOpen ? `${index * 60}ms` : "0ms";
+            const delay = isOpen ? `${(index + 1) * 60}ms` : "0ms";
             const isHovered = hoveredItem === item.id;
 
             // ============ LINK ITEM ============
