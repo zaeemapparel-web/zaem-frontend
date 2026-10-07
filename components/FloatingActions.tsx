@@ -11,7 +11,6 @@ import {
   MessageCircle,
   Headphones,
   X,
-  ShoppingBag,
   Phone,
   Mail,
   Sparkles,
@@ -410,24 +409,7 @@ export default function FloatingActions({
   );
 
   // ==================== SHOP ASSISTANT STYLE ====================
-  // When menu open → move to align above container (bottom-right)
-  // When menu closed → use saved/default position
   const shopStyle: React.CSSProperties = useMemo(() => {
-    // When menu is open, align Shop Assistant with the container (as top item)
-    if (isOpen) {
-      return {
-        position: "fixed",
-        right: "16px",
-        // Adjust this value based on container bottom + items height
-        bottom: isMobile ? "260px" : "300px",
-        touchAction: "none",
-        transition:
-          "right 0.5s cubic-bezier(0.34,1.56,0.64,1), bottom 0.5s cubic-bezier(0.34,1.56,0.64,1)",
-        zIndex: 97,
-      };
-    }
-
-    // When menu closed → use saved position or default
     if (shopPos) {
       return {
         position: "fixed",
@@ -446,7 +428,7 @@ export default function FloatingActions({
       bottom: `${DEFAULT_BOTTOM_OFFSET}px`,
       touchAction: "none",
     };
-  }, [isOpen, shopPos, isDragging, isMobile]);
+  }, [shopPos, isDragging]);
 
   // ==================== RENDER ====================
   return (
@@ -460,57 +442,53 @@ export default function FloatingActions({
         />
       )}
 
-      {/* ==================== SHOP ASSISTANT ==================== */}
-      <div
-        ref={shopRef}
-        data-shop-assistant
-        style={shopStyle}
-        className={`z-[97] select-none transition-opacity duration-700 ${
-          visible ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-      >
-        <button
-          onMouseDown={(e) => {
-            if (isOpen) return; // Disable drag when menu open
-            e.preventDefault();
-            handleShopDragStart(e.clientX, e.clientY);
-          }}
-          onTouchStart={(e) => {
-            if (isOpen) return; // Disable drag when menu open
-            if (e.touches.length === 1) {
-              handleShopDragStart(e.touches[0].clientX, e.touches[0].clientY);
-            }
-          }}
-          onClick={(e) => {
-            if (hasDragged) {
-              e.preventDefault();
-              e.stopPropagation();
-            }
-          }}
-          aria-label="Open Shop Assistant (drag to move)"
-          className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] shadow-2xl border border-white/10 dark:border-black/10 backdrop-blur-md transition-all duration-300 ${
-            isOpen
-              ? "cursor-pointer"
-              : isDragging
-              ? "cursor-grabbing scale-105 shadow-2xl"
-              : "cursor-grab hover:scale-105 active:scale-95"
+      {/* ==================== SHOP ASSISTANT (only when menu is closed) ==================== */}
+      {!isOpen && (
+        <div
+          ref={shopRef}
+          data-shop-assistant
+          style={shopStyle}
+          className={`z-[97] select-none transition-opacity duration-700 ${
+            visible ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         >
-          {/* Icon circle */}
-          <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1D1D1F] flex items-center justify-center shrink-0">
-            <Sparkles
-              className="w-4 h-4 text-[#1D1D1F] dark:text-white"
-              strokeWidth={2}
-            />
-          </div>
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              handleShopDragStart(e.clientX, e.clientY);
+            }}
+            onTouchStart={(e) => {
+              if (e.touches.length === 1) {
+                handleShopDragStart(e.touches[0].clientX, e.touches[0].clientY);
+              }
+            }}
+            onClick={(e) => {
+              if (hasDragged) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            aria-label="Open Shop Assistant (drag to move)"
+            className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] shadow-2xl border border-white/10 dark:border-black/10 backdrop-blur-md transition-all duration-300 ${
+              isDragging
+                ? "cursor-grabbing scale-105 shadow-2xl"
+                : "cursor-grab hover:scale-105 active:scale-95"
+            }`}
+          >
+            {/* Icon circle */}
+            <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1D1D1F] flex items-center justify-center shrink-0">
+              <Sparkles
+                className="w-4 h-4 text-[#1D1D1F] dark:text-white"
+                strokeWidth={2}
+              />
+            </div>
 
-          {/* Text */}
-          <span className="text-[13px] font-body font-medium whitespace-nowrap pr-1">
-            Shop Assistant
-          </span>
+            {/* Text */}
+            <span className="text-[13px] font-body font-medium whitespace-nowrap pr-1">
+              Shop Assistant
+            </span>
 
-          {/* Drag hint dots - hidden when menu open */}
-          {!isOpen && (
+            {/* Drag hint dots */}
             <div className="flex flex-col gap-0.5 pr-1 opacity-40 group-hover:opacity-70 transition-opacity">
               <div className="flex gap-0.5">
                 <div className="w-0.5 h-0.5 rounded-full bg-current" />
@@ -525,9 +503,9 @@ export default function FloatingActions({
                 <div className="w-0.5 h-0.5 rounded-full bg-current" />
               </div>
             </div>
-          )}
-        </button>
-      </div>
+          </button>
+        </div>
+      )}
 
       {/* ==================== CONTAINER (MENU) ==================== */}
       <div
@@ -548,7 +526,7 @@ export default function FloatingActions({
           role="menu"
           aria-label="Contact actions"
         >
-          {/* When menu open → add Shop Assistant as the FIRST item */}
+          {/* Shop Assistant as FIRST menu item when open */}
           {isOpen && (
             <button
               onClick={() => {
@@ -559,7 +537,7 @@ export default function FloatingActions({
               onMouseEnter={() => setHoveredItem("shop")}
               onMouseLeave={() => setHoveredItem(null)}
               style={{ transitionDelay: "0ms" }}
-              className={`group flex items-center gap-3 pl-4 pr-3 py-2.5 bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] rounded-full shadow-lg hover:shadow-2xl active:scale-95 transition-all duration-300 border border-black/5 dark:border-white/10 backdrop-blur-sm`}
+              className="group flex items-center gap-3 pl-4 pr-3 py-2.5 bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] rounded-full shadow-lg hover:shadow-2xl active:scale-95 transition-all duration-300 border border-black/5 dark:border-white/10 backdrop-blur-sm"
               aria-label="Shop Assistant"
               role="menuitem"
             >
