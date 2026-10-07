@@ -55,6 +55,7 @@ const HAPTIC_TOGGLE = [12, 20, 12];
 const OPEN_DELAY = 1200;
 const OUTSIDE_CLICK_DELAY = 100;
 const POSITION_KEY = "zaem_shop_assistant_pos";
+const HIDDEN_KEY = "zaem_shop_assistant_hidden";
 const DRAG_THRESHOLD = 8;
 const SNAP_MARGIN = 16;
 const DEFAULT_BOTTOM_OFFSET = 100;
@@ -76,6 +77,9 @@ export default function FloatingActions({
   const [shopPos, setShopPos] = useState<Position | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [hasDragged, setHasDragged] = useState(false);
+
+  // Shop Assistant visibility
+  const [shopVisible, setShopVisible] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -109,6 +113,19 @@ export default function FloatingActions({
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), OPEN_DELAY);
     return () => clearTimeout(timer);
+  }, []);
+
+  // ==================== LOAD SHOP ASSISTANT VISIBILITY ====================
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const hidden = localStorage.getItem(HIDDEN_KEY);
+      if (hidden === "true") {
+        setShopVisible(false);
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   // ==================== LOAD SAVED POSITION ====================
@@ -291,6 +308,22 @@ export default function FloatingActions({
     setTimeout(() => setHasDragged(false), 250);
   }, [onOpenShopAI, hapticFeedback, savePosition]);
 
+  // ==================== SHOP ASSISTANT - CLOSE ====================
+  const handleShopClose = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hapticFeedback(HAPTIC_LIGHT);
+      setShopVisible(false);
+      try {
+        localStorage.setItem(HIDDEN_KEY, "true");
+      } catch {
+        // ignore
+      }
+    },
+    [hapticFeedback]
+  );
+
   // ==================== SHOP ASSISTANT - MOUSE EVENTS ====================
   useEffect(() => {
     if (!isDragging) return;
@@ -438,68 +471,86 @@ export default function FloatingActions({
         />
       )}
 
-      {/* ==================== SHOP ASSISTANT (DRAGGABLE) ==================== */}
-      <div
-        ref={shopRef}
-        data-shop-assistant
-        style={shopStyle}
-        className={`z-[96] select-none transition-opacity duration-700 ${
-          visible ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-      >
-        <button
-          onMouseDown={(e) => {
-            e.preventDefault();
-            handleShopDragStart(e.clientX, e.clientY);
-          }}
-          onTouchStart={(e) => {
-            if (e.touches.length === 1) {
-              handleShopDragStart(e.touches[0].clientX, e.touches[0].clientY);
-            }
-          }}
-          onClick={(e) => {
-            if (hasDragged) {
-              e.preventDefault();
-              e.stopPropagation();
-            }
-          }}
-          aria-label="Open Shop Assistant (drag to move)"
-          className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] shadow-2xl border border-white/10 dark:border-black/10 backdrop-blur-md transition-all duration-300 ${
-            isDragging
-              ? "cursor-grabbing scale-105 shadow-2xl"
-              : "cursor-grab hover:scale-105 active:scale-95"
+      {/* ==================== SHOP ASSISTANT (DRAGGABLE + CLOSABLE) ==================== */}
+      {shopVisible && (
+        <div
+          ref={shopRef}
+          data-shop-assistant
+          style={shopStyle}
+          className={`z-[96] select-none transition-opacity duration-700 ${
+            visible ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         >
-          {/* Icon circle */}
-          <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1D1D1F] flex items-center justify-center shrink-0">
-            <Sparkles
-              className="w-4 h-4 text-[#1D1D1F] dark:text-white"
-              strokeWidth={2}
-            />
-          </div>
+          <div className="relative">
+            {/* Main Shop Assistant Button */}
+            <button
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleShopDragStart(e.clientX, e.clientY);
+              }}
+              onTouchStart={(e) => {
+                if (e.touches.length === 1) {
+                  handleShopDragStart(e.touches[0].clientX, e.touches[0].clientY);
+                }
+              }}
+              onClick={(e) => {
+                if (hasDragged) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              aria-label="Open Shop Assistant (drag to move)"
+              className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] shadow-2xl border border-white/10 dark:border-black/10 backdrop-blur-md transition-all duration-300 ${
+                isDragging
+                  ? "cursor-grabbing scale-105 shadow-2xl"
+                  : "cursor-grab hover:scale-105 active:scale-95"
+              }`}
+            >
+              {/* Icon circle */}
+              <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1D1D1F] flex items-center justify-center shrink-0">
+                <Sparkles
+                  className="w-4 h-4 text-[#1D1D1F] dark:text-white"
+                  strokeWidth={2}
+                />
+              </div>
 
-          {/* Text */}
-          <span className="text-[13px] font-body font-medium whitespace-nowrap pr-1">
-            Shop Assistant
-          </span>
+              {/* Text */}
+              <span className="text-[13px] font-body font-medium whitespace-nowrap pr-1">
+                Shop Assistant
+              </span>
 
-          {/* Drag hint dots */}
-          <div className="flex flex-col gap-0.5 pr-1 opacity-40 group-hover:opacity-70 transition-opacity">
-            <div className="flex gap-0.5">
-              <div className="w-0.5 h-0.5 rounded-full bg-current" />
-              <div className="w-0.5 h-0.5 rounded-full bg-current" />
-            </div>
-            <div className="flex gap-0.5">
-              <div className="w-0.5 h-0.5 rounded-full bg-current" />
-              <div className="w-0.5 h-0.5 rounded-full bg-current" />
-            </div>
-            <div className="flex gap-0.5">
-              <div className="w-0.5 h-0.5 rounded-full bg-current" />
-              <div className="w-0.5 h-0.5 rounded-full bg-current" />
-            </div>
+              {/* Drag hint dots */}
+              <div className="flex flex-col gap-0.5 pr-1 opacity-40 group-hover:opacity-70 transition-opacity">
+                <div className="flex gap-0.5">
+                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
+                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
+                </div>
+                <div className="flex gap-0.5">
+                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
+                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
+                </div>
+                <div className="flex gap-0.5">
+                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
+                  <div className="w-0.5 h-0.5 rounded-full bg-current" />
+                </div>
+              </div>
+            </button>
+
+            {/* Close (X) Button - Top Right */}
+            <button
+              onClick={handleShopClose}
+              onTouchStart={handleShopClose}
+              className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-white dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-full flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform duration-200 z-10"
+              aria-label="Hide Shop Assistant"
+            >
+              <X
+                className="w-3 h-3 text-[#1D1D1F] dark:text-white"
+                strokeWidth={2.5}
+              />
+            </button>
           </div>
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* ==================== CONTAINER (MENU) ==================== */}
       <div
