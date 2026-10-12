@@ -192,7 +192,7 @@ export default function AdminLoginPage() {
               <label className="admin-label">Email Address</label>
               <div className="relative">
                 <Mail
-                  className="w-4 h-4 absolute left-3.5 top-[22px] text-[#86868B] pointer-events-none"
+                  className="w-4 h-4 absolute right-3.5 top-[22px] text-[#86868B] pointer-events-none"
                   strokeWidth={2}
                 />
                 <input
@@ -202,7 +202,7 @@ export default function AdminLoginPage() {
                   required
                   autoComplete="email"
                   placeholder="admin@zaem.com"
-                  className="admin-input pl-10"
+                  className="admin-input pr-10"
                   disabled={loading}
                 />
               </div>
@@ -226,7 +226,7 @@ export default function AdminLoginPage() {
               </div>
               <div className="relative">
                 <Lock
-                  className="w-4 h-4 absolute left-3.5 top-[22px] text-[#86868B] pointer-events-none"
+                  className="w-4 h-4 absolute right-3.5 top-[22px] text-[#86868B] pointer-events-none"
                   strokeWidth={2}
                 />
                 <input
@@ -236,13 +236,13 @@ export default function AdminLoginPage() {
                   required
                   autoComplete="current-password"
                   placeholder="Enter your password"
-                  className="admin-input pl-10 pr-10"
+                  className="admin-input  pr-20"
                   disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-[13px] p-1.5 rounded-md hover:bg-[#F5F5F7] dark:hover:bg-[#1C1C1E] transition-colors"
+                  className="absolute right-11 top-[13px] p-1.5 rounded-md hover:bg-[#F5F5F7] dark:hover:bg-[#1C1C1E] transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (

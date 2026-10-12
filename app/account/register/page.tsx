@@ -343,7 +343,7 @@ export default function RegisterPage() {
               </label>
               <div className="relative">
                 <UserIcon
-                  className="w-4 h-4 absolute left-4 top-[22px] text-[#86868B] pointer-events-none"
+                  className="w-4 h-4 absolute right-4 top-[22px] text-[#86868B] pointer-events-none"
                   strokeWidth={2}
                 />
                 <input
@@ -354,7 +354,7 @@ export default function RegisterPage() {
                   autoComplete="name"
                   placeholder="Your full name"
                   disabled={loading}
-                  className="w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-11 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200"
+                  className="w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-14 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200"
                 />
                 {validations.name && (
                   <CheckCircle
@@ -372,7 +372,7 @@ export default function RegisterPage() {
               </label>
               <div className="relative">
                 <Mail
-                  className="w-4 h-4 absolute left-4 top-[22px] text-[#86868B] pointer-events-none"
+                  className="w-4 h-4 absolute right-4 top-[22px] text-[#86868B] pointer-events-none"
                   strokeWidth={2}
                 />
                 <input
@@ -383,11 +383,11 @@ export default function RegisterPage() {
                   autoComplete="email"
                   placeholder="your@email.com"
                   disabled={loading}
-                  className="w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-11 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200"
+                  className="w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-14 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200"
                 />
                 {validations.email && (
                   <CheckCircle
-                    className="w-4 h-4 absolute right-4 top-[22px] text-[#2E7D32]"
+                    className="w-4 h-4 absolute right-2 top-[22px] text-[#2E7D32]"
                     strokeWidth={2}
                   />
                 )}
@@ -404,7 +404,7 @@ export default function RegisterPage() {
               </label>
               <div className="relative">
                 <Phone
-                  className="w-4 h-4 absolute left-4 top-[22px] text-[#86868B] pointer-events-none"
+                  className="w-4 h-4 absolute right-4 top-[22px] text-[#86868B] pointer-events-none"
                   strokeWidth={2}
                 />
                 <input
@@ -414,11 +414,11 @@ export default function RegisterPage() {
                   autoComplete="tel"
                   placeholder="0300 1234567"
                   disabled={loading}
-                  className="w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-11 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200"
+                  className="w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-14 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200"
                 />
                 {form.phone && validations.phone && (
                   <CheckCircle
-                    className="w-4 h-4 absolute right-4 top-[22px] text-[#2E7D32]"
+                    className="w-4 h-4 absolute right-2 top-[22px] text-[#2E7D32]"
                     strokeWidth={2}
                   />
                 )}
@@ -438,7 +438,7 @@ export default function RegisterPage() {
               </label>
               <div className="relative">
                 <Lock
-                  className="w-4 h-4 absolute left-4 top-[22px] text-[#86868B] pointer-events-none"
+                  className="w-4 h-4 absolute right-4 top-[22px] text-[#86868B] pointer-events-none"
                   strokeWidth={2}
                 />
                 <input
@@ -454,7 +454,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-[13px] p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
+                  className="absolute right-12 top-[13px] p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
                   aria-label={
                     showPassword ? "Hide password" : "Show password"
                   }
@@ -517,7 +517,7 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                   placeholder="Repeat password"
                   disabled={loading}
-                  className={`w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border rounded-xl pl-11 pr-12 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200 ${
+                  className={`w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border rounded-xl pl-4 pr-20 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200 ${
                     form.confirmPassword
                       ? validations.passwordMatch
                         ? "border-[#2E7D32]"
@@ -530,7 +530,7 @@ export default function RegisterPage() {
                   onClick={() =>
                     setShowConfirmPassword(!showConfirmPassword)
                   }
-                  className="absolute right-3 top-[13px] p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
+                  className="absolute right-12 top-[13px] p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
                   aria-label={
                     showConfirmPassword ? "Hide password" : "Show password"
                   }
@@ -549,7 +549,7 @@ export default function RegisterPage() {
                 </button>
                 {form.confirmPassword && validations.passwordMatch && (
                   <CheckCircle
-                    className="w-4 h-4 absolute right-12 top-[22px] text-[#2E7D32]"
+                    className="w-4 h-4 absolute right-[52px] top-[22px] text-[#2E7D32]"
                     strokeWidth={2}
                   />
                 )}

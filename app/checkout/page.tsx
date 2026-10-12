@@ -188,9 +188,6 @@ export default function CheckoutPage() {
   const [promoError, setPromoError] = useState("");
   const [applyingPromo, setApplyingPromo] = useState(false);
 
-  // Notes
-  const [notes, setNotes] = useState("");
-
   // Terms
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -396,7 +393,6 @@ export default function CheckoutPage() {
           addressId: selectedAddressId,
           paymentMethod,
           promoCode: appliedPromo || null,
-          notes: notes.trim() || null,
         }),
       });
 
@@ -473,7 +469,7 @@ export default function CheckoutPage() {
       {/* ==================== TOAST ==================== */}
       {toast && (
         <div
-          className={`fixed top-6 right-6 z-[200] px-5 py-3 rounded-lg shadow-lg border-l-2 admin-fade-in ${
+          className={`fixed top-6 right-6 z-[200] px-5 py-3 rounded-lg shadow-lg border-l-2 ${
             toast.type === "success"
               ? "bg-[#E8F5E9] border-[#2E7D32] text-[#2E7D32]"
               : "bg-[#FFEBEE] border-[#C62828] text-[#C62828]"
@@ -661,7 +657,7 @@ export default function CheckoutPage() {
 
                     {/* New Address Form */}
                     {(showNewAddress || addresses.length === 0) && (
-                      <div className="space-y-4 admin-fade-in">
+                      <div className="space-y-4">
 
                         <div className="grid md:grid-cols-2 gap-4">
                           {/* Full Name */}
@@ -954,38 +950,6 @@ export default function CheckoutPage() {
                         </button>
                       );
                     })}
-                  </div>
-                </div>
-
-                {/* ============ SECTION 3: ORDER NOTES ============ */}
-                <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl border border-[#E5E5E7] dark:border-[#38383A] overflow-hidden">
-
-                  <div className="p-5 border-b border-[#E5E5E7] dark:border-[#38383A] flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E] flex items-center justify-center text-[#6E6E73] dark:text-[#98989D] text-[13px] font-medium shrink-0">
-                      3
-                    </div>
-                    <div>
-                      <h2 className="font-display text-lg text-[#1D1D1F] dark:text-white">
-                        Order Notes
-                      </h2>
-                      <p className="text-[11px] text-[#86868B] mt-0.5">
-                        Optional — anything we should know?
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-5">
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Special delivery instructions, gift message, etc."
-                      rows={3}
-                      maxLength={500}
-                      className="w-full bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl p-4 text-[13px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] transition-all resize-none"
-                    />
-                    <p className="text-[10px] text-[#86868B] mt-1.5 text-right">
-                      {notes.length}/500
-                    </p>
                   </div>
                 </div>
 
