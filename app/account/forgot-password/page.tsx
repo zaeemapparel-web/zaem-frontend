@@ -62,7 +62,6 @@ export default function ForgotPasswordPage() {
       {/* ==================== LEFT — BRANDING ==================== */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative bg-[#0A0A0A] overflow-hidden">
 
-        {/* Background */}
         <div className="absolute inset-0">
           <img
             src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&q=80"
@@ -72,10 +71,8 @@ export default function ForgotPasswordPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent" />
         </div>
 
-        {/* Content */}
         <div className="relative z-10 flex flex-col justify-between w-full p-12 xl:p-16">
 
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
             <div className="w-11 h-11 bg-white flex items-center justify-center rounded-xl">
               <span className="font-display text-[#0A0A0A] text-lg font-medium">
@@ -92,7 +89,6 @@ export default function ForgotPasswordPage() {
             </div>
           </Link>
 
-          {/* Center */}
           <div className="my-auto max-w-md">
 
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
@@ -132,7 +128,6 @@ export default function ForgotPasswordPage() {
 
           </div>
 
-          {/* Footer */}
           <div className="flex items-center gap-4 text-[11px] text-white/50">
             <span>© 2026 ZAEM</span>
             <span className="w-1 h-1 rounded-full bg-white/30" />
@@ -147,7 +142,6 @@ export default function ForgotPasswordPage() {
 
         </div>
 
-        {/* Glow */}
         <div className="absolute top-1/4 right-0 w-[400px] h-[400px] bg-white/5 rounded-full blur-[120px] pointer-events-none" />
       </div>
 
@@ -156,7 +150,6 @@ export default function ForgotPasswordPage() {
 
         <div className="w-full max-w-md">
 
-          {/* Mobile Logo */}
           <div className="lg:hidden mb-10">
             <Link href="/" className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#1D1D1F] dark:bg-white flex items-center justify-center rounded-xl">
@@ -175,7 +168,6 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
 
-          {/* Breadcrumb */}
           <nav className="flex items-center gap-2 text-[10px] tracking-wider uppercase text-[#86868B] font-medium mb-6">
             <Link
               href="/"
@@ -197,8 +189,7 @@ export default function ForgotPasswordPage() {
 
           {/* ============ SUCCESS STATE ============ */}
           {success ? (
-            <div className="admin-fade-in">
-
+            <div>
               <div className="w-16 h-16 rounded-full bg-[#E8F5E9] flex items-center justify-center mb-6">
                 <CheckCircle
                   className="w-8 h-8 text-[#2E7D32]"
@@ -218,7 +209,6 @@ export default function ForgotPasswordPage() {
                 . The link will expire in 1 hour.
               </p>
 
-              {/* Info Box */}
               <div className="p-4 rounded-xl bg-[#E3F2FD] border border-[#64B5F6]/30 mb-6">
                 <p className="text-[12px] text-[#0A84FF] flex items-start gap-2">
                   <AlertCircle
@@ -277,9 +267,8 @@ export default function ForgotPasswordPage() {
                 </p>
               </div>
 
-              {/* Error */}
               {error && (
-                <div className="mb-6 p-4 bg-[#FFEBEE] border-l-2 border-[#C62828] text-[#C62828] text-[13px] rounded-r-lg flex items-start gap-3 admin-fade-in">
+                <div className="mb-6 p-4 bg-[#FFEBEE] border-l-2 border-[#C62828] text-[#C62828] text-[13px] rounded-r-lg flex items-start gap-3">
                   <AlertCircle
                     className="w-4 h-4 shrink-0 mt-0.5"
                     strokeWidth={2}
@@ -288,7 +277,6 @@ export default function ForgotPasswordPage() {
                 </div>
               )}
 
-              {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
 
                 <div>
@@ -297,7 +285,7 @@ export default function ForgotPasswordPage() {
                   </label>
                   <div className="relative">
                     <Mail
-                      className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+                      className="w-4 h-4 absolute left-4 top-[22px] text-[#86868B] pointer-events-none"
                       strokeWidth={2}
                     />
                     <input
@@ -333,7 +321,6 @@ export default function ForgotPasswordPage() {
 
               </form>
 
-              {/* Divider */}
               <div className="my-7 flex items-center gap-4">
                 <div className="flex-1 h-px bg-[#E5E5E7] dark:bg-[#38383A]" />
                 <span className="text-[10px] tracking-[0.3em] uppercase text-[#86868B] font-medium">
@@ -342,7 +329,6 @@ export default function ForgotPasswordPage() {
                 <div className="flex-1 h-px bg-[#E5E5E7] dark:bg-[#38383A]" />
               </div>
 
-              {/* Back to Login */}
               <Link
                 href="/account/login"
                 className="group w-full h-13 flex items-center justify-center gap-2 border border-[#E5E5E7] dark:border-[#38383A] rounded-xl text-[12px] tracking-[0.2em] uppercase font-medium text-[#1D1D1F] dark:text-white hover:bg-[#F5F5F7] dark:hover:bg-[#1C1C1E] transition-all"
@@ -354,7 +340,6 @@ export default function ForgotPasswordPage() {
                 Back to Login
               </Link>
 
-              {/* Footer */}
               <div className="mt-10 pt-6 border-t border-[#E5E5E7] dark:border-[#38383A] space-y-3">
                 <div className="flex items-center justify-center gap-2 text-[11px] text-[#86868B]">
                   <Shield className="w-3 h-3" strokeWidth={2} />

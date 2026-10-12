@@ -282,7 +282,7 @@ export default function LoginPage() {
               </label>
               <div className="relative">
                 <Mail
-  className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+  className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
   style={{ transform: 'translateY(-50%)' }}
   strokeWidth={2}
 />
@@ -294,8 +294,8 @@ export default function LoginPage() {
                   autoComplete="email"
                   placeholder="your@email.com"
                   disabled={loading}
-                  className="w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-4 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200"
-                />
+                  className="w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-11 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200"
+                />    
               </div>
             </div>
 
@@ -314,7 +314,7 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <Lock
-  className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+  className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
   style={{ transform: 'translateY(-50%)' }}
   strokeWidth={2}
 />
@@ -326,12 +326,12 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   placeholder="Enter your password"
                   disabled={loading}
-                  className="w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-12 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200"
+                  className="w-full h-13 bg-[#FAFAFA] dark:bg-[#1C1C1E] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-11 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-200"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
+                  className="absolute right-12 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
                   aria-label={
                     showPassword ? "Hide password" : "Show password"
                   }
