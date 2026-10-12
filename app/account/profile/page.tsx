@@ -414,7 +414,7 @@ export default function ProfilePage() {
                   </label>
                   <div className="relative">
                     <UserIcon
-                      className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+                      className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
                       strokeWidth={2}
                     />
                     <input
@@ -426,7 +426,7 @@ export default function ProfilePage() {
                       required
                       placeholder="Your full name"
                       disabled={saving}
-                      className="w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-4 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all"
+                      className="w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-11 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all"
                     />
                   </div>
                 </div>
@@ -438,14 +438,14 @@ export default function ProfilePage() {
                   </label>
                   <div className="relative">
                     <Mail
-                      className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+                      className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
                       strokeWidth={2}
                     />
                     <input
                       type="email"
                       value={profile.email}
                       disabled
-                      className="w-full h-12 bg-[#F5F5F7] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-4 text-[14px] text-[#6E6E73] dark:text-[#98989D] outline-none cursor-not-allowed"
+                      className="w-full h-12 bg-[#F5F5F7] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-11 text-[14px] text-[#6E6E73] dark:text-[#98989D] outline-none cursor-not-allowed"
                     />
                   </div>
                   <p className="text-[10px] text-[#86868B] mt-1.5 flex items-center gap-1">
@@ -462,7 +462,7 @@ export default function ProfilePage() {
                     </label>
                     <div className="relative">
                       <Phone
-                        className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+                        className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
                         strokeWidth={2}
                       />
                       <input
@@ -473,7 +473,7 @@ export default function ProfilePage() {
                         }
                         placeholder="0300 1234567"
                         disabled={saving}
-                        className="w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-4 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all"
+                        className="w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-11 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all"
                       />
                     </div>
                   </div>
@@ -484,7 +484,7 @@ export default function ProfilePage() {
                     </label>
                     <div className="relative">
                       <Calendar
-                        className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+                        className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
                         strokeWidth={2}
                       />
                       <input
@@ -497,7 +497,7 @@ export default function ProfilePage() {
                           })
                         }
                         disabled={saving}
-                        className="w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-4 text-[14px] text-[#1D1D1F] dark:text-white outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all"
+                        className="w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-11 text-[14px] text-[#1D1D1F] dark:text-white outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all"
                       />
                     </div>
                   </div>
@@ -558,7 +558,7 @@ export default function ProfilePage() {
                   </label>
                   <div className="relative">
                     <Lock
-                      className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+                      className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
                       strokeWidth={2}
                     />
                     <input
@@ -573,14 +573,14 @@ export default function ProfilePage() {
                       required
                       placeholder="Enter current password"
                       disabled={changingPassword}
-                      className="w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-12 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all"
+                      className="w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-20 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all"
                     />
                     <button
                       type="button"
                       onClick={() =>
                         setShowCurrentPassword(!showCurrentPassword)
                       }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
+                      className="absolute right-12 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
                     >
                       {showCurrentPassword ? (
                         <EyeOff
@@ -604,7 +604,7 @@ export default function ProfilePage() {
                   </label>
                   <div className="relative">
                     <Lock
-                      className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+                      className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
                       strokeWidth={2}
                     />
                     <input
@@ -616,12 +616,12 @@ export default function ProfilePage() {
                       required
                       placeholder="Min. 6 characters"
                       disabled={changingPassword}
-                      className="w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-11 pr-12 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all"
+                      className="w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E7] dark:border-[#38383A] rounded-xl pl-4 pr-20 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:border-[#1D1D1F] dark:focus:border-white focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
+                      className="absolute right-12 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
                     >
                       {showNewPassword ? (
                         <EyeOff
@@ -671,7 +671,7 @@ export default function ProfilePage() {
                   </label>
                   <div className="relative">
                     <Lock
-                      className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
+                      className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-[#86868B] pointer-events-none"
                       strokeWidth={2}
                     />
                     <input
@@ -686,7 +686,7 @@ export default function ProfilePage() {
                       required
                       placeholder="Repeat new password"
                       disabled={changingPassword}
-                      className={`w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border rounded-xl pl-11 pr-12 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all ${
+                      className={`w-full h-12 bg-[#FAFAFA] dark:bg-[#0A0A0A] border rounded-xl pl-4 pr-20 text-[14px] text-[#1D1D1F] dark:text-white placeholder:text-[#86868B] outline-none focus:bg-white dark:focus:bg-[#1C1C1E] focus:shadow-[0_0_0_4px_rgba(29,29,31,0.06)] dark:focus:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all ${
                         passwords.confirm
                           ? passwords.new === passwords.confirm
                             ? "border-[#2E7D32]"
@@ -699,7 +699,7 @@ export default function ProfilePage() {
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
                       }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
+                      className="absolute right-12 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
                     >
                       {showConfirmPassword ? (
                         <EyeOff
