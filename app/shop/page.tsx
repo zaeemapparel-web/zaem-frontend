@@ -740,40 +740,49 @@ function ShopContent() {
     [category, categories]
   );
 
-  // ⭐ LOGIC: Check karein ke selected category parent hai ya nahi
-  const isParentCategory = useMemo(() => {
+  // ⭐ UPDATED LOGIC: "All" (khali category) ko bhi parent category ki tarah treat karein
+  const isGroupView = useMemo(() => {
+    if (!category) return true; // Agar "All" select hai toh grouping hogi
     const parent = categories.find(c => c.slug === category);
     return parent && parent.children && parent.children.length > 0;
   }, [categories, category]);
 
-  // ⭐ LOGIC: Products ko unki child categories ke hisaab se group karein
+  // ⭐ UPDATED LOGIC: Products ko group karein (All aur Parent dono ke liye)
   const groupedProducts = useMemo(() => {
-    if (!isParentCategory || products.length === 0) return {};
+    if (!isGroupView || products.length === 0) return {};
     
     const groups: Record<string, { name: string; products: any[] }> = {};
-    const parentCat = categories.find(c => c.slug === category);
+    const parentCat = category ? categories.find(c => c.slug === category) : null;
 
     products.forEach((p) => {
       let groupSlug = p.category?.slug || "other";
       let groupName = p.category?.name || "Other";
 
-      // Try to find the immediate child category of the selected parent
       if (parentCat && parentCat.children) {
+        // Parent Category (Man/Woman) ke andar
         const directChild = parentCat.children.find(c => c.slug === groupSlug);
         if (directChild) {
           groupSlug = directChild.slug;
           groupName = directChild.name;
         } else {
-          // Check if product is inside a grandchild category
           for (const child of parentCat.children) {
-            if (child.children) {
-              const isGrandChild = child.children.some(gc => gc.slug === groupSlug);
-              if (isGrandChild) {
-                groupSlug = child.slug;
-                groupName = child.name;
-                break;
-              }
+            if (child.children && child.children.some(gc => gc.slug === groupSlug)) {
+              groupSlug = child.slug;
+              groupName = child.name;
+              break;
             }
+          }
+        }
+      } else {
+        // All Category ke andar: Product ki Top-Level category (Man/Woman/Bags) find karein
+        for (const topCat of categories) {
+          if (
+            topCat.slug === groupSlug || 
+            topCat.children?.some(c => c.slug === groupSlug || c.children?.some(gc => gc.slug === groupSlug))
+          ) {
+            groupSlug = topCat.slug;
+            groupName = topCat.name;
+            break;
           }
         }
       }
@@ -785,7 +794,7 @@ function ShopContent() {
     });
 
     return groups;
-  }, [products, isParentCategory, categories, category]);
+  }, [products, isGroupView, categories, category]);
 
   const toggleGroup = (slug: string) => {
     setExpandedGroups(prev => ({ ...prev, [slug]: !prev[slug] }));
@@ -1254,14 +1263,14 @@ function ShopContent() {
                     </button>
                   )}
                 </div>
-              ) : isParentCategory ? (
+              ) : isGroupView ? (
                 
-                // ⭐ PARENT CATEGORY GROUPED VIEW
+                // ⭐ GROUP VIEW (Applies to All, Man, Woman, etc.)
                 <div className="space-y-16">
                   {Object.entries(groupedProducts).map(([slug, group]) => (
                     <div key={slug}>
                       {/* Group Header */}
-                      <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center justify-between mb-6 border-b border-[#E5E5E7] dark:border-[#38383A] pb-4">
                         <h2 className="font-display text-2xl md:text-3xl capitalize text-[#1D1D1F] dark:text-white">{group.name}</h2>
                         <Link href={`/shop?category=${slug}`} className="text-[10px] tracking-widest uppercase font-body text-[#6E6E73] dark:text-[#98989D] hover:text-[#1D1D1F] dark:hover:text-white flex items-center gap-1 group/link">
                           View All <ChevronRight className="w-3 h-3 group-hover/link:translate-x-0.5 transition-transform" />
@@ -1304,7 +1313,7 @@ function ShopContent() {
 
               ) : (
                 
-                // ⭐ FLAT VIEW (Original Layout)
+                // ⭐ FLAT VIEW (Original Layout for specific sub-categories)
                 <div
                   className={
                     viewMode === "grid"
@@ -1559,8 +1568,8 @@ function ShopContent() {
           </div>
 
           <div className="p-5 border-t border-[#E5E5E7] dark:border-[#38383A] flex gap-3 shrink-0">
-            {hasActiveFilters && (
-              <button
+            {hasActiveFilters &&
+            <button
                 onClick={clearFilters}
                 className="flex-1 py-3 border border-[#D2D2D7] dark:border-[#48484A] rounded-lg text-[10px] tracking-widest uppercase font-body text-[#1D1D1F] dark:text-white hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
               >
@@ -1569,7 +1578,7 @@ function ShopContent() {
             )}
             <button
               onClick={() => setMobileFiltersOpen(false)}
-            className="flex-1 py-3 bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] rounded-lg text-[10px] tracking-widest uppercase font-body hover:opacity-80 transition-colors"
+              className="flex-1 py-3 bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] rounded-lg text-[10px] tracking-widest uppercase font-body hover:opacity-80 transition-colors"
             >
               Apply
             </button>

@@ -6,6 +6,7 @@ import {
   useState,
   useRef,
   useCallback,
+  useMemo, // Grouping ke liye useMemo add kiya
 } from "react";
 import {
   ArrowDown,
@@ -254,9 +255,52 @@ function EmptyState({
   );
 }
 
+// ==================== GROUPING HELPER ====================
+function groupProducts(products: any[], parentSlug: string | null, categories: any[]) {
+  if (!products || products.length === 0) return {};
+  const groups: Record<string, { name: string; products: any[] }> = {};
+  const parentCat = parentSlug ? categories.find((c) => c.slug === parentSlug) : null;
+
+  products.forEach((p) => {
+    let groupSlug = p.category?.slug || "other";
+    let groupName = p.category?.name || "Other";
+
+    if (parentCat && parentCat.children) {
+      const directChild = parentCat.children.find((c: any) => c.slug === groupSlug);
+      if (directChild) {
+        groupSlug = directChild.slug;
+        groupName = directChild.name;
+      } else {
+        for (const child of parentCat.children) {
+          if (child.children && child.children.some((gc: any) => gc.slug === groupSlug)) {
+            groupSlug = child.slug;
+            groupName = child.name;
+            break;
+          }
+        }
+      }
+    } else {
+      for (const topCat of categories) {
+        if (
+          topCat.slug === groupSlug ||
+          topCat.children?.some((c: any) => c.slug === groupSlug || c.children?.some((gc: any) => gc.slug === groupSlug))
+        ) {
+          groupSlug = topCat.slug;
+          groupName = topCat.name;
+          break;
+        }
+      }
+    }
+    if (!groups[groupSlug]) groups[groupSlug] = { name: groupName, products: [] };
+    groups[groupSlug].products.push(p);
+  });
+  return groups;
+}
+
 // ==================== MAIN HOMEPAGE ====================
 export default function Home() {
   // ==================== STATE ====================
+  const [categories, setCategories] = useState<any[]>([]);
   const [mensProducts, setMensProducts] = useState<any[]>([]);
   const [newArrivals, setNewArrivals] = useState<any[]>([]);
   const [womensProducts, setWomensProducts] = useState<any[]>([]);
@@ -265,7 +309,7 @@ export default function Home() {
   const [loadingNew, setLoadingNew] = useState(true);
   const [loadingWomens, setLoadingWomens] = useState(true);
 
-  // 🔴 "Load More" States
+  // 🔴 Aapki purani States (Inko maine waisa hi chhora hai)
   const [showAllNew, setShowAllNew] = useState(false);
   const [showAllMens, setShowAllMens] = useState(false);
   const [showAllWomens, setShowAllWomens] = useState(false);
@@ -281,6 +325,22 @@ export default function Home() {
 
   const heroRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // ==================== FETCH CATEGORIES ====================
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/categories`);
+        const data = await res.json();
+        if (data.success && data.data?.categories) {
+          setCategories(data.data.categories);
+        }
+      } catch (error) {
+        console.error("Category fetch error:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // ==================== PERFORMANCE INIT ====================
   useEffect(() => {
@@ -321,8 +381,8 @@ export default function Home() {
   useEffect(() => {
     const fetchMens = async () => {
       try {
-        // Limit 12 kar diya hai taake "Load More" pe data ho
-        const res = await fetch(`${API_URL}/api/products?category=man&limit=12`);
+        // Limit 100 kar diya hai taake grouping mein saare products fetch hon
+        const res = await fetch(`${API_URL}/api/products?category=man&limit=100`);
         const data = await res.json();
         if (data.success) {
           setMensProducts(data.data.products || []);
@@ -340,8 +400,7 @@ export default function Home() {
   useEffect(() => {
     const fetchNew = async () => {
       try {
-        // API update: ab newArrival=true bhej rahe hain
-        const res = await fetch(`${API_URL}/api/products?newArrival=true&limit=12`);
+        const res = await fetch(`${API_URL}/api/products?newArrival=true&limit=100`);
         const data = await res.json();
         if (data.success) {
           setNewArrivals(data.data.products || []);
@@ -359,7 +418,7 @@ export default function Home() {
   useEffect(() => {
     const fetchWomens = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/products?category=woman&limit=12`);
+        const res = await fetch(`${API_URL}/api/products?category=woman&limit=100`);
         const data = await res.json();
         if (data.success) {
           setWomensProducts(data.data.products || []);
@@ -477,6 +536,57 @@ export default function Home() {
     },
     [isVisible, performance.reducedMotion]
   );
+
+  // ==================== GROUPING LOGIC ====================
+  const groupedNew = useMemo(() => groupProducts(newArrivals, null, categories), [newArrivals, categories]);
+  const groupedMens = useMemo(() => groupProducts(mensProducts, "man", categories), [mensProducts, categories]);
+  const groupedWomens = useMemo(() => groupProducts(womensProducts, "woman", categories), [womensProducts, categories]);
+
+  // ==================== REUSABLE GROUP COMPONENT ====================
+  const ProductGroupList = ({ groupsData, sectionPrefix }: { groupsData: any, sectionPrefix: string }) => {
+    // Har group ka apna "Show More" state rakhne ke liye
+    const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+    if (Object.keys(groupsData).length === 0) {
+      return <EmptyState title="Coming soon..." subtitle="Products will appear here" />;
+    }
+
+    return (
+      <div className="space-y-12 md:space-y-16">
+        {Object.entries(groupsData).map(([slug, group]: any) => (
+          <div key={slug}>
+            {/* Category Heading & View All */}
+            <div className="flex items-center justify-between mb-6 border-b border-ink/10 pb-4">
+              <h3 className="font-display text-xl md:text-2xl capitalize text-ink">{group.name}</h3>
+              <Link href={`/shop?category=${slug}`} className="text-[10px] uppercase tracking-widest font-body text-ink/50 hover:text-ink flex items-center gap-1 group/link transition-colors">
+                View All <ArrowRight className="w-3 h-3 group-hover/link:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+
+            {/* 4 Items Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+              {(expanded[slug] ? group.products : group.products.slice(0, 4)).map((product: any) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+
+            {/* Show More / Show Less Button (Bina Minus icon ke) */}
+            {group.products.length > 4 && (
+              <div className="flex justify-center mt-12">
+                <button
+                  onClick={() => setExpanded(prev => ({ ...prev, [slug]: !prev[slug] }))}
+                  className="group inline-flex items-center gap-2 px-8 py-4 bg-transparent border border-ink text-ink text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ink hover:text-ivory transition-all duration-500 rounded-full"
+                >
+                  <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
+                  {expanded[slug] ? "Show Less" : "Show More"}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <main className="bg-ivory text-ink overflow-x-hidden contain-content">
@@ -799,31 +909,8 @@ export default function Home() {
           <div className={revealClasses("new", 300)}>
             {loadingNew ? (
               <ProductGridSkeleton />
-            ) : newArrivals.length === 0 ? (
-              <EmptyState
-                title="Coming soon..."
-                subtitle="New arrivals will appear here"
-              />
             ) : (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-                  {(showAllNew ? newArrivals : newArrivals.slice(0, 4)).map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
-                {/* Load More Button */}
-                {!showAllNew && newArrivals.length > 4 && (
-                  <div className="flex justify-center mt-12">
-                    <button
-                      onClick={() => setShowAllNew(true)}
-                      className="group inline-flex items-center gap-2 px-8 py-4 bg-transparent border border-ink text-ink text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ink hover:text-ivory transition-all duration-500 rounded-full"
-                    >
-                      <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
-                      Show More
-                    </button>
-                  </div>
-                )}
-              </>
+              <ProductGroupList groupsData={groupedNew} sectionPrefix="new" />
             )}
           </div>
         </div>
@@ -869,31 +956,8 @@ export default function Home() {
           <div className={revealClasses("mens", 300)}>
             {loadingMens ? (
               <ProductGridSkeleton />
-            ) : mensProducts.length === 0 ? (
-              <EmptyState
-                title="Coming soon..."
-                subtitle="Men's products will appear here"
-              />
             ) : (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-                  {(showAllMens ? mensProducts : mensProducts.slice(0, 4)).map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
-                {/* Load More Button */}
-                {!showAllMens && mensProducts.length > 4 && (
-                  <div className="flex justify-center mt-12">
-                    <button
-                      onClick={() => setShowAllMens(true)}
-                      className="group inline-flex items-center gap-2 px-8 py-4 bg-transparent border border-ink text-ink text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ink hover:text-ivory transition-all duration-500 rounded-full"
-                    >
-                      <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
-                      Show More
-                    </button>
-                  </div>
-                )}
-              </>
+              <ProductGroupList groupsData={groupedMens} sectionPrefix="mens" />
             )}
           </div>
         </div>
@@ -941,31 +1005,8 @@ export default function Home() {
           <div className={revealClasses("womens", 300)}>
             {loadingWomens ? (
               <ProductGridSkeleton />
-            ) : womensProducts.length === 0 ? (
-              <EmptyState
-                title="Coming soon..."
-                subtitle="Women's products will appear here"
-              />
             ) : (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-                  {(showAllWomens ? womensProducts : womensProducts.slice(0, 4)).map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
-                {/* Load More Button */}
-                {!showAllWomens && womensProducts.length > 4 && (
-                  <div className="flex justify-center mt-12">
-                    <button
-                      onClick={() => setShowAllWomens(true)}
-                      className="group inline-flex items-center gap-2 px-8 py-4 bg-transparent border border-ink text-ink text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ink hover:text-ivory transition-all duration-500 rounded-full"
-                    >
-                      <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
-                      Show More
-                    </button>
-                  </div>
-                )}
-              </>
+              <ProductGroupList groupsData={groupedWomens} sectionPrefix="womens" />
             )}
           </div>
         </div>
