@@ -11,10 +11,9 @@ import {
   X,
   Loader2,
   Upload,
+  ImagePlus,
 } from "lucide-react";
 import AdminCategorySelector from "@/components/AdminCategorySelector";
-
-
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -22,6 +21,7 @@ export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [uploading, setUploading] = useState(false); // Image upload state
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [categoryPath, setCategoryPath] = useState("");
@@ -59,6 +59,48 @@ export default function NewProductPage() {
     if (form.images.length === 1) return;
     const newImages = form.images.filter((_, i) => i !== index);
     setForm((prev) => ({ ...prev, images: newImages }));
+  };
+
+  // ==================== IMAGE UPLOAD TO CLOUDINARY ====================
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError("");
+    
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        // Agar pehla box khali hai toh usme dalo, warna naya add karo
+        setForm((prev) => {
+          const newImages = [...prev.images];
+          if (newImages[0] === "") {
+            newImages[0] = data.url;
+          } else {
+            newImages.push(data.url);
+          }
+          return { ...prev, images: newImages };
+        });
+      } else {
+        setError(data.message || "Failed to upload image");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      setError("Network error while uploading image. Check backend.");
+    } finally {
+      setUploading(false);
+      e.target.value = ""; // Input reset karein
+    }
   };
 
   // ==================== AI DESCRIPTION ====================
@@ -129,7 +171,7 @@ export default function NewProductPage() {
         categoryId: form.categoryId,
         stock: Number(form.stock) || 0,
         sku: form.sku.trim() || null,
-        images: form.images.filter((img) => img.trim()),
+        images: form.images.filter((img) => img.trim() !== ""), // Khali images filter out karein
         sizes: form.sizes
           ? form.sizes.split(",").map((s) => s.trim()).filter(Boolean)
           : [],
@@ -167,7 +209,6 @@ export default function NewProductPage() {
 
   return (
     <main>
-
       {/* ============ HEADER ============ */}
       <div className="sticky top-[64px] z-20 bg-[#FBFBFD]/95 dark:bg-black/95 backdrop-blur-xl border-b border-[#E5E5E7] dark:border-[#38383A] -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8">
         <div className="py-4 flex items-center justify-between gap-4">
@@ -218,10 +259,8 @@ export default function NewProductPage() {
         )}
 
         <div className="grid lg:grid-cols-3 gap-6">
-
           {/* ============ LEFT — MAIN ============ */}
           <div className="lg:col-span-2 space-y-6">
-
             {/* Basic Info */}
             <div className="admin-card p-6">
               <h2 className="font-display text-lg text-[#1D1D1F] dark:text-white border-b border-[#E5E5E7] dark:border-[#38383A] pb-3 mb-5">
@@ -288,6 +327,43 @@ export default function NewProductPage() {
                 Product Images
               </h2>
 
+              {/* 🚀 Cloudinary Direct Upload Button */}
+              <div className="mb-5 p-4 border-2 border-dashed border-[#E5E5E7] dark:border-[#38383A] rounded-xl text-center bg-[#FAFAFA] dark:bg-[#1C1C1E]">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file-upload"
+                  disabled={uploading}
+                />
+                <label
+                  htmlFor="file-upload"
+                  className={`cursor-pointer flex flex-col items-center justify-center gap-2 text-[13px] font-medium transition-colors ${
+                    uploading ? "text-[#86868B]" : "text-[#0A84FF] hover:text-[#0056b3]"
+                  }`}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      Uploading to Cloudinary...
+                    </>
+                  ) : (
+                    <>
+                      <ImagePlus className="w-6 h-6" />
+                      Gallery se Image Select Karein
+                    </>
+                  )}
+                </label>
+                <p className="text-[11px] text-[#86868B] mt-2">
+                  (JPG, PNG, WEBP. Max 5MB)
+                </p>
+              </div>
+
+              <p className="text-[11px] uppercase tracking-wider font-medium text-[#86868B] mb-3">
+                Ya Phir Direct URL Paste Karein:
+              </p>
+
               <div className="space-y-3">
                 {form.images.map((img, index) => (
                   <div key={index} className="flex gap-2">
@@ -297,7 +373,7 @@ export default function NewProductPage() {
                         type="url"
                         value={img}
                         onChange={(e) => handleImageChange(index, e.target.value)}
-                        placeholder="https://images.unsplash.com/..."
+                        placeholder="https://res.cloudinary.com/..."
                         className="flex-1 bg-transparent outline-none py-3 text-[13px]"
                       />
                     </div>
@@ -320,7 +396,7 @@ export default function NewProductPage() {
                 className="mt-4 flex items-center gap-2 text-[12px] font-medium text-[#6E6E73] hover:text-[#1D1D1F] dark:hover:text-white transition-colors"
               >
                 <Plus className="w-4 h-4" strokeWidth={2} />
-                Add another image
+                Add another image URL
               </button>
 
               {form.images[0] && (
@@ -368,12 +444,10 @@ export default function NewProductPage() {
                 </div>
               </div>
             </div>
-
           </div>
 
           {/* ============ RIGHT — SIDEBAR ============ */}
           <div className="space-y-6">
-
             {/* Pricing */}
             <div className="admin-card p-6">
               <h2 className="font-display text-lg text-[#1D1D1F] dark:text-white border-b border-[#E5E5E7] dark:border-[#38383A] pb-3 mb-5">
@@ -417,7 +491,6 @@ export default function NewProductPage() {
                 Organization
               </h2>
 
-              {/* ⭐ NEW 3-LEVEL SELECTOR */}
               <div className="mb-5">
                 <AdminCategorySelector
                   value={form.categoryId}
@@ -486,9 +559,7 @@ export default function NewProductPage() {
                 </label>
               </div>
             </div>
-
           </div>
-
         </div>
 
         {/* ============ BOTTOM BAR ============ */}
@@ -512,7 +583,6 @@ export default function NewProductPage() {
             {loading ? "Saving..." : "Create Product"}
           </button>
         </div>
-
       </form>
     </main>
   );
