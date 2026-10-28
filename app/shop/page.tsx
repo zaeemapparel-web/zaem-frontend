@@ -24,6 +24,8 @@ import {
   Heart,
   ArrowUp,
   Share2,
+  Plus, // ⭐ Naya Icon
+  Minus, // ⭐ Naya Icon
 } from "lucide-react";
 import QuickViewModal from "@/components/QuickViewModal";
 import AISearchBar from "@/components/AISearchBar";
@@ -164,11 +166,9 @@ function useCategories() {
           try {
             const parsed = JSON.parse(cached);
             if (Array.isArray(parsed) && parsed.length > 0 && !cancelled) {
-              // Sort by preferred order
               const order = ["man", "woman", "bags", "fragrances"];
               const sorted = [...parsed].sort(
-                (a: any, b: any) =>
-                  order.indexOf(a.slug) - order.indexOf(b.slug)
+                (a: any, b: any) => order.indexOf(a.slug) - order.indexOf(b.slug)
               );
               setCategories(sorted);
               setLoading(false);
@@ -189,10 +189,7 @@ function useCategories() {
           );
           setCategories(sorted);
           try {
-            sessionStorage.setItem(
-              "zaem_categories_cache",
-              JSON.stringify(sorted)
-            );
+            sessionStorage.setItem("zaem_categories_cache", JSON.stringify(sorted));
             sessionStorage.setItem("zaem_categories_time", now.toString());
           } catch {
             // ignore
@@ -613,6 +610,9 @@ function ShopContent() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [shareToast, setShareToast] = useState(false);
+  
+  // ⭐ Naya State: Groups ko expand/collapse karne ke liye
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   const { categories, loading: categoriesLoading } = useCategories();
   const { wishlistIds, toggle: toggleWishlist } = useWishlist();
@@ -634,7 +634,8 @@ function ShopContent() {
       setLoading(true);
       try {
         const query = buildQuery();
-        const res = await fetch(`${API_URL}/api/products?${query}`);
+        // ⭐ UPDATE: limit=100 add kiya taake parent category par saare products fetch hon taake grouping theek se ho
+        const res = await fetch(`${API_URL}/api/products?${query}${query ? '&' : ''}limit=100`);
         const data = await res.json();
         if (!cancelled && data.success) setProducts(data.data.products);
       } catch (error) {
@@ -738,6 +739,57 @@ function ShopContent() {
     () => getBreadcrumb(category, categories),
     [category, categories]
   );
+
+  // ⭐ LOGIC: Check karein ke selected category parent hai ya nahi
+  const isParentCategory = useMemo(() => {
+    const parent = categories.find(c => c.slug === category);
+    return parent && parent.children && parent.children.length > 0;
+  }, [categories, category]);
+
+  // ⭐ LOGIC: Products ko unki child categories ke hisaab se group karein
+  const groupedProducts = useMemo(() => {
+    if (!isParentCategory || products.length === 0) return {};
+    
+    const groups: Record<string, { name: string; products: any[] }> = {};
+    const parentCat = categories.find(c => c.slug === category);
+
+    products.forEach((p) => {
+      let groupSlug = p.category?.slug || "other";
+      let groupName = p.category?.name || "Other";
+
+      // Try to find the immediate child category of the selected parent
+      if (parentCat && parentCat.children) {
+        const directChild = parentCat.children.find(c => c.slug === groupSlug);
+        if (directChild) {
+          groupSlug = directChild.slug;
+          groupName = directChild.name;
+        } else {
+          // Check if product is inside a grandchild category
+          for (const child of parentCat.children) {
+            if (child.children) {
+              const isGrandChild = child.children.some(gc => gc.slug === groupSlug);
+              if (isGrandChild) {
+                groupSlug = child.slug;
+                groupName = child.name;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (!groups[groupSlug]) {
+        groups[groupSlug] = { name: groupName, products: [] };
+      }
+      groups[groupSlug].products.push(p);
+    });
+
+    return groups;
+  }, [products, isParentCategory, categories, category]);
+
+  const toggleGroup = (slug: string) => {
+    setExpandedGroups(prev => ({ ...prev, [slug]: !prev[slug] }));
+  };
 
   return (
     <main className="bg-[#FAFAFA] dark:bg-black text-[#1D1D1F] dark:text-white min-h-screen">
@@ -1202,7 +1254,57 @@ function ShopContent() {
                     </button>
                   )}
                 </div>
+              ) : isParentCategory ? (
+                
+                // ⭐ PARENT CATEGORY GROUPED VIEW
+                <div className="space-y-16">
+                  {Object.entries(groupedProducts).map(([slug, group]) => (
+                    <div key={slug}>
+                      {/* Group Header */}
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="font-display text-2xl md:text-3xl capitalize text-[#1D1D1F] dark:text-white">{group.name}</h2>
+                        <Link href={`/shop?category=${slug}`} className="text-[10px] tracking-widest uppercase font-body text-[#6E6E73] dark:text-[#98989D] hover:text-[#1D1D1F] dark:hover:text-white flex items-center gap-1 group/link">
+                          View All <ChevronRight className="w-3 h-3 group-hover/link:translate-x-0.5 transition-transform" />
+                        </Link>
+                      </div>
+                      
+                      {/* Group Grid */}
+                      <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5" : "space-y-3"}>
+                        {(expandedGroups[slug] ? group.products : group.products.slice(0, 4)).map((product) => (
+                          <ProductCard
+                            key={product.id}
+                            product={product}
+                            viewMode={viewMode}
+                            onQuickView={handleQuickView}
+                            isInWishlist={wishlistIds.has(product.id)}
+                            onWishlistToggle={handleWishlistToggle}
+                            onView={handleView}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Show More / Show Less Button */}
+                      {group.products.length > 4 && (
+                        <div className="flex justify-center mt-8">
+                          <button
+                            onClick={() => toggleGroup(slug)}
+                            className="inline-flex items-center gap-2 px-6 py-2.5 border border-[#D2D2D7] dark:border-[#48484A] rounded-full text-[10px] tracking-widest uppercase font-body text-[#1D1D1F] dark:text-white hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
+                          >
+                            {expandedGroups[slug] ? (
+                              <><Minus className="w-3 h-3" /> Show Less</>
+                            ) : (
+                              <><Plus className="w-3 h-3" /> Show More</>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
               ) : (
+                
+                // ⭐ FLAT VIEW (Original Layout)
                 <div
                   className={
                     viewMode === "grid"
@@ -1467,7 +1569,7 @@ function ShopContent() {
             )}
             <button
               onClick={() => setMobileFiltersOpen(false)}
-              className="flex-1 py-3 bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] rounded-lg text-[10px] tracking-widest uppercase font-body hover:opacity-80 transition-colors"
+            className="flex-1 py-3 bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] rounded-lg text-[10px] tracking-widest uppercase font-body hover:opacity-80 transition-colors"
             >
               Apply
             </button>
