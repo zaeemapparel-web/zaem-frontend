@@ -6,12 +6,10 @@ import {
   useState,
   useRef,
   useCallback,
-  useMemo,
 } from "react";
 import {
   ArrowDown,
   ArrowRight,
-  ShoppingBag,
   Package,
   Sparkles,
   Star,
@@ -19,6 +17,7 @@ import {
   RotateCcw,
   Shield,
   Heart,
+  Plus, // Naya Icon Load More ke liye
 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -258,23 +257,25 @@ function EmptyState({
 // ==================== MAIN HOMEPAGE ====================
 export default function Home() {
   // ==================== STATE ====================
-  const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
+  const [mensProducts, setMensProducts] = useState<any[]>([]);
   const [newArrivals, setNewArrivals] = useState<any[]>([]);
-  const [bestSellers, setBestSellers] = useState<any[]>([]);
-  const [loadingFeatured, setLoadingFeatured] = useState(true);
+  const [womensProducts, setWomensProducts] = useState<any[]>([]);
+  
+  const [loadingMens, setLoadingMens] = useState(true);
   const [loadingNew, setLoadingNew] = useState(true);
-  const [loadingBest, setLoadingBest] = useState(true);
+  const [loadingWomens, setLoadingWomens] = useState(true);
+
+  // 🔴 "Load More" States
+  const [showAllNew, setShowAllNew] = useState(false);
+  const [showAllMens, setShowAllMens] = useState(false);
+  const [showAllWomens, setShowAllWomens] = useState(false);
+  
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const [visibleSections, setVisibleSections] = useState<Set<string>>(
     new Set()
   );
   const [performance, setPerformance] = useState({
-    targetFPS: 60,
-    deviceRefreshRate: 60,
-    isHighRefresh: false,
-    isBatterySaver: false,
-    isLowEnd: false,
     reducedMotion: false,
   });
 
@@ -296,7 +297,6 @@ export default function Home() {
           const unsubscribe = manager.subscribe((profile: any) => {
             setPerformance(profile);
 
-            // Apply battery saver class
             if (profile.isBatterySaver) {
               document.body.classList.add("battery-saver");
             } else {
@@ -317,29 +317,31 @@ export default function Home() {
     };
   }, []);
 
-  // ==================== FETCH FEATURED PRODUCTS ====================
+  // ==================== FETCH MEN'S PRODUCTS ====================
   useEffect(() => {
-    const fetchFeatured = async () => {
+    const fetchMens = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/products?featured=true&limit=4`);
+        // Limit 12 kar diya hai taake "Load More" pe data ho
+        const res = await fetch(`${API_URL}/api/products?category=man&limit=12`);
         const data = await res.json();
         if (data.success) {
-          setFeaturedProducts(data.data.products || []);
+          setMensProducts(data.data.products || []);
         }
       } catch (error) {
-        console.error("Featured fetch error:", error);
+        console.error("Men's fetch error:", error);
       } finally {
-        setLoadingFeatured(false);
+        setLoadingMens(false);
       }
     };
-    fetchFeatured();
+    fetchMens();
   }, []);
 
   // ==================== FETCH NEW ARRIVALS ====================
   useEffect(() => {
     const fetchNew = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/products?sort=newest&limit=4`);
+        // API update: ab newArrival=true bhej rahe hain
+        const res = await fetch(`${API_URL}/api/products?newArrival=true&limit=12`);
         const data = await res.json();
         if (data.success) {
           setNewArrivals(data.data.products || []);
@@ -353,24 +355,22 @@ export default function Home() {
     fetchNew();
   }, []);
 
-  // ==================== FETCH BEST SELLERS ====================
+  // ==================== FETCH WOMEN'S PRODUCTS ====================
   useEffect(() => {
-    const fetchBest = async () => {
+    const fetchWomens = async () => {
       try {
-        const res = await fetch(
-          `${API_URL}/api/products?sort=price-desc&limit=4`
-        );
+        const res = await fetch(`${API_URL}/api/products?category=woman&limit=12`);
         const data = await res.json();
         if (data.success) {
-          setBestSellers(data.data.products || []);
+          setWomensProducts(data.data.products || []);
         }
       } catch (error) {
-        console.error("Best sellers fetch error:", error);
+        console.error("Women's fetch error:", error);
       } finally {
-        setLoadingBest(false);
+        setLoadingWomens(false);
       }
     };
-    fetchBest();
+    fetchWomens();
   }, []);
 
   // ==================== LENIS SMOOTH SCROLL ====================
@@ -480,7 +480,6 @@ export default function Home() {
 
   return (
     <main className="bg-ivory text-ink overflow-x-hidden contain-content">
-
       {/* ==================== HERO SECTION ==================== */}
       <section
         ref={heroRef}
@@ -783,7 +782,7 @@ export default function Home() {
               </h2>
             </div>
             <Link
-              href="/shop?sort=newest"
+              href="/shop?newArrival=true"
               className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
                 "new",
                 200
@@ -806,46 +805,60 @@ export default function Home() {
                 subtitle="New arrivals will appear here"
               />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-                {newArrivals.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+                  {(showAllNew ? newArrivals : newArrivals.slice(0, 4)).map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+                {/* Load More Button */}
+                {!showAllNew && newArrivals.length > 4 && (
+                  <div className="flex justify-center mt-12">
+                    <button
+                      onClick={() => setShowAllNew(true)}
+                      className="group inline-flex items-center gap-2 px-8 py-4 bg-transparent border border-ink text-ink text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ink hover:text-ivory transition-all duration-500 rounded-full"
+                    >
+                      <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
+                      Show More
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </section>
 
-      {/* ==================== FEATURED ==================== */}
+      {/* ==================== MEN'S COLLECTION ==================== */}
       <section
         className="py-20 md:py-32 px-4 md:px-8 contain-layout"
-        data-section-id="featured"
+        data-section-id="mens"
       >
         <div className="max-w-[1400px] mx-auto">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 md:mb-14">
             <div>
               <div
                 className={`flex items-center gap-2 mb-4 ${revealClasses(
-                  "featured"
+                  "mens"
                 )}`}
               >
                 <Star className="w-3.5 h-3.5 text-ink" strokeWidth={2} />
                 <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body">
-                  04 — Featured
+                  04 — For Him
                 </p>
               </div>
-              <h2 className={`display-lg ${revealClasses("featured", 100)}`}>
-                The <em className="font-display italic">essentials.</em>
+              <h2 className={`display-lg ${revealClasses("mens", 100)}`}>
+                Men's <em className="font-display italic">Collection.</em>
               </h2>
             </div>
             <Link
-              href="/shop"
+              href="/shop?category=man"
               className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
-                "featured",
+                "mens",
                 200
               )}`}
             >
-              View All Products
+              Shop Men's
               <ArrowRight
                 className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300"
                 strokeWidth={2}
@@ -853,57 +866,71 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className={revealClasses("featured", 300)}>
-            {loadingFeatured ? (
+          <div className={revealClasses("mens", 300)}>
+            {loadingMens ? (
               <ProductGridSkeleton />
-            ) : featuredProducts.length === 0 ? (
+            ) : mensProducts.length === 0 ? (
               <EmptyState
-                title="No featured products yet"
-                subtitle="Featured items will appear here"
+                title="Coming soon..."
+                subtitle="Men's products will appear here"
               />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-                {featuredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+                  {(showAllMens ? mensProducts : mensProducts.slice(0, 4)).map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+                {/* Load More Button */}
+                {!showAllMens && mensProducts.length > 4 && (
+                  <div className="flex justify-center mt-12">
+                    <button
+                      onClick={() => setShowAllMens(true)}
+                      className="group inline-flex items-center gap-2 px-8 py-4 bg-transparent border border-ink text-ink text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ink hover:text-ivory transition-all duration-500 rounded-full"
+                    >
+                      <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
+                      Show More
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </section>
 
-      {/* ==================== BEST SELLERS ==================== */}
+      {/* ==================== WOMEN'S COLLECTION ==================== */}
       <section
         className="pb-20 md:pb-32 px-4 md:px-8 bg-bone/30 contain-layout"
-        data-section-id="best"
+        data-section-id="womens"
       >
         <div className="max-w-[1400px] mx-auto pt-16 md:pt-24">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 md:mb-14">
             <div>
               <div
                 className={`flex items-center gap-2 mb-4 ${revealClasses(
-                  "best"
+                  "womens"
                 )}`}
               >
                 <span className="w-3.5 h-3.5 text-ink text-sm flex items-center justify-center">
                   ↗
                 </span>
                 <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-body">
-                  05 — Bestsellers
+                  05 — For Her
                 </p>
               </div>
-              <h2 className={`display-lg ${revealClasses("best", 100)}`}>
-                Most <em className="font-display italic">loved.</em>
+              <h2 className={`display-lg ${revealClasses("womens", 100)}`}>
+                Women's <em className="font-display italic">Collection.</em>
               </h2>
             </div>
             <Link
-              href="/shop?sort=price-desc"
+              href="/shop?category=woman"
               className={`group inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-body hover:opacity-60 transition-opacity self-start md:self-end ${revealClasses(
-                "best",
+                "womens",
                 200
               )}`}
             >
-              Shop Bestsellers
+              Shop Women's
               <ArrowRight
                 className="w-3 h-3 group-hover:translate-x-1 transition-transform duration-300"
                 strokeWidth={2}
@@ -911,20 +938,34 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className={revealClasses("best", 300)}>
-            {loadingBest ? (
+          <div className={revealClasses("womens", 300)}>
+            {loadingWomens ? (
               <ProductGridSkeleton />
-            ) : bestSellers.length === 0 ? (
+            ) : womensProducts.length === 0 ? (
               <EmptyState
                 title="Coming soon..."
-                subtitle="Bestsellers will appear here"
+                subtitle="Women's products will appear here"
               />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-                {bestSellers.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+                  {(showAllWomens ? womensProducts : womensProducts.slice(0, 4)).map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+                {/* Load More Button */}
+                {!showAllWomens && womensProducts.length > 4 && (
+                  <div className="flex justify-center mt-12">
+                    <button
+                      onClick={() => setShowAllWomens(true)}
+                      className="group inline-flex items-center gap-2 px-8 py-4 bg-transparent border border-ink text-ink text-[10px] uppercase tracking-[0.2em] font-body hover:bg-ink hover:text-ivory transition-all duration-500 rounded-full"
+                    >
+                      <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
+                      Show More
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
