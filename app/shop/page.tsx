@@ -1568,8 +1568,8 @@ function ShopContent() {
           </div>
 
           <div className="p-5 border-t border-[#E5E5E7] dark:border-[#38383A] flex gap-3 shrink-0">
-            {hasActiveFilters &&
-            <button
+            {hasActiveFilters && (
+              <button
                 onClick={clearFilters}
                 className="flex-1 py-3 border border-[#D2D2D7] dark:border-[#48484A] rounded-lg text-[10px] tracking-widest uppercase font-body text-[#1D1D1F] dark:text-white hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] transition-colors"
               >
@@ -1632,3 +1632,4 @@ export default function ShopPage() {
     </Suspense>
   );
 }
+      
